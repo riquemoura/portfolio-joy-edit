@@ -32,8 +32,9 @@ export async function generateCatalogPDF(
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
   const margin = 15;
-  const productWidth = (pageWidth - margin * 3) / 2;
-  const productHeight = 90;
+  const cardWidth = (pageWidth - margin * 3) / 2;
+  const cardHeight = 120;
+  const imageSize = 55;
   const productsPerPage = 4;
   const startY = 45;
 
@@ -42,7 +43,6 @@ export async function generateCatalogPDF(
       try {
         const img = await loadImage(backgroundImage);
         pdfDoc.addImage(img, 'JPEG', 0, 0, pageWidth, pageHeight);
-        // Add semi-transparent white overlay for readability
         pdfDoc.setFillColor(255, 255, 255);
         pdfDoc.saveGraphicsState();
         (pdfDoc as any).internal.write('0.85 g');
@@ -60,7 +60,6 @@ export async function generateCatalogPDF(
     pdfDoc.setTextColor(40, 40, 40);
     pdfDoc.text(catalogTitle, pageWidth / 2, 25, { align: 'center' });
     
-    // Decorative line
     pdfDoc.setDrawColor(180, 160, 140);
     pdfDoc.setLineWidth(0.5);
     pdfDoc.line(margin, 32, pageWidth - margin, 32);
@@ -97,56 +96,56 @@ export async function generateCatalogPDF(
       const product = pageProducts[i];
       const col = i % 2;
       const row = Math.floor(i / 2);
-      const x = margin + col * (productWidth + margin);
-      const y = startY + row * (productHeight + 10);
+      const x = margin + col * (cardWidth + margin);
+      const y = startY + row * (cardHeight + 10);
 
-      // Product card background
+      // Card background
       pdf.setFillColor(250, 250, 250);
       pdf.setDrawColor(220, 220, 220);
-      pdf.roundedRect(x, y, productWidth, productHeight, 3, 3, 'FD');
+      pdf.roundedRect(x, y, cardWidth, cardHeight, 3, 3, 'FD');
 
-      // Product image
-      const imgSize = 35;
-      const imgX = x + 5;
+      // Product image - centered at top
+      const imgX = x + (cardWidth - imageSize) / 2;
       const imgY = y + 5;
 
       if (product.image) {
         try {
           const img = await loadImage(product.image);
-          pdf.addImage(img, 'JPEG', imgX, imgY, imgSize, imgSize);
+          pdf.addImage(img, 'JPEG', imgX, imgY, imageSize, imageSize);
         } catch (error) {
           pdf.setFillColor(240, 240, 240);
-          pdf.rect(imgX, imgY, imgSize, imgSize, 'F');
+          pdf.rect(imgX, imgY, imageSize, imageSize, 'F');
         }
       } else {
         pdf.setFillColor(240, 240, 240);
-        pdf.rect(imgX, imgY, imgSize, imgSize, 'F');
+        pdf.rect(imgX, imgY, imageSize, imageSize, 'F');
       }
 
-      // Product details
-      const textX = imgX + imgSize + 8;
-      const textWidth = productWidth - imgSize - 18;
+      // Text area below image
+      const textY = imgY + imageSize + 5;
+      const textX = x + 5;
+      const textWidth = cardWidth - 10;
 
-      // Name
+      // Product name
       pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(12);
+      pdf.setFontSize(11);
       pdf.setTextColor(40, 40, 40);
       const nameLines = pdf.splitTextToSize(product.name, textWidth);
-      pdf.text(nameLines.slice(0, 1), textX, imgY + 6);
+      pdf.text(nameLines.slice(0, 1), textX, textY + 4);
 
       // Description - 3 lines
       pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(9);
+      pdf.setFontSize(8);
       pdf.setTextColor(100, 100, 100);
       const descLines = pdf.splitTextToSize(product.description, textWidth);
       const displayLines = descLines.slice(0, 3);
-      pdf.text(displayLines, textX, imgY + 14);
+      pdf.text(displayLines, textX, textY + 10);
 
-      // Price
+      // Price at bottom
       pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(14);
+      pdf.setFontSize(13);
       pdf.setTextColor(120, 90, 60);
-      pdf.text(formatPrice(product.price), textX, imgY + imgSize - 2);
+      pdf.text(formatPrice(product.price), textX, y + cardHeight - 5);
     }
 
     addFooter(pdf, pageIndex + 1, totalPages);

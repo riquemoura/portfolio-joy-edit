@@ -10,7 +10,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { ImagePlus } from 'lucide-react';
+import { ImagePlus, Crop } from 'lucide-react';
+import { ImageCropper } from './ImageCropper';
 
 interface ProductFormProps {
   open: boolean;
@@ -31,6 +32,8 @@ export function ProductForm({
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [image, setImage] = useState('');
+  const [tempImage, setTempImage] = useState('');
+  const [showCropper, setShowCropper] = useState(false);
 
   useEffect(() => {
     if (editingProduct) {
@@ -48,6 +51,8 @@ export function ProductForm({
     setDescription('');
     setPrice('');
     setImage('');
+    setTempImage('');
+    setShowCropper(false);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -55,10 +60,22 @@ export function ProductForm({
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setImage(reader.result as string);
+        setTempImage(reader.result as string);
+        setShowCropper(true);
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleCropComplete = (croppedImage: string) => {
+    setImage(croppedImage);
+    setShowCropper(false);
+    setTempImage('');
+  };
+
+  const handleCropCancel = () => {
+    setShowCropper(false);
+    setTempImage('');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -87,84 +104,105 @@ export function ProductForm({
             {editingProduct ? 'Editar Produto' : 'Adicionar Produto'}
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Nome do Produto</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Ex: Produto Premium"
-              required
-            />
-          </div>
+        
+        {showCropper ? (
+          <ImageCropper
+            image={tempImage}
+            onCropComplete={handleCropComplete}
+            onCancel={handleCropCancel}
+          />
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nome do Produto</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Ex: Produto Premium"
+                required
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="description">Descrição</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Descreva o produto em até 3 linhas..."
-              rows={3}
-              className="resize-none"
-            />
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Descrição</Label>
+              <Textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Descreva o produto em até 3 linhas..."
+                rows={3}
+                className="resize-none"
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="price">Preço (R$)</Label>
-            <Input
-              id="price"
-              type="number"
-              step="0.01"
-              min="0"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              placeholder="0,00"
-              required
-            />
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="price">Preço (R$)</Label>
+              <Input
+                id="price"
+                type="number"
+                step="0.01"
+                min="0"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder="0,00"
+                required
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label>Imagem do Produto</Label>
-            <div className="flex items-center gap-4">
-              {image ? (
-                <div className="relative h-20 w-20 overflow-hidden rounded-lg border border-border">
-                  <img
-                    src={image}
-                    alt="Preview"
-                    className="h-full w-full object-cover"
+            <div className="space-y-2">
+              <Label>Imagem do Produto</Label>
+              <div className="flex items-center gap-4">
+                {image ? (
+                  <div className="relative h-20 w-20 overflow-hidden rounded-lg border border-border">
+                    <img
+                      src={image}
+                      alt="Preview"
+                      className="h-full w-full object-cover"
+                    />
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="secondary"
+                      className="absolute bottom-1 right-1 h-6 w-6"
+                      onClick={() => {
+                        setTempImage(image);
+                        setShowCropper(true);
+                      }}
+                    >
+                      <Crop className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex h-20 w-20 items-center justify-center rounded-lg border border-dashed border-border bg-muted">
+                    <ImagePlus className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                )}
+                <div>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="w-full cursor-pointer"
                   />
                 </div>
-              ) : (
-                <div className="flex h-20 w-20 items-center justify-center rounded-lg border border-dashed border-border bg-muted">
-                  <ImagePlus className="h-6 w-6 text-muted-foreground" />
-                </div>
-              )}
-              <div>
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="w-full cursor-pointer"
-                />
               </div>
             </div>
-          </div>
 
-          <div className="flex justify-end gap-2 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit">
-              {editingProduct ? 'Salvar Alterações' : 'Adicionar'}
-            </Button>
-          </div>
-        </form>
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit">
+                {editingProduct ? 'Salvar Alterações' : 'Adicionar'}
+              </Button>
+            </div>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );
