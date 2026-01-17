@@ -33,8 +33,8 @@ export async function generateCatalogPDF(
   const pageHeight = pdf.internal.pageSize.getHeight();
   const margin = 15;
   const cardWidth = (pageWidth - margin * 3) / 2;
-  const cardHeight = 120;
-  const imageSize = 55;
+  const cardHeight = 130;
+  const imageSize = 70;
   const productsPerPage = 4;
   const startY = 45;
 
