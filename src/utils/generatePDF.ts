@@ -141,11 +141,11 @@ export async function generateCatalogPDF(
       const displayLines = descLines.slice(0, 3);
       pdf.text(displayLines, textX, textY + 10);
 
-      // Price at bottom
+      // Price below description
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(13);
       pdf.setTextColor(120, 90, 60);
-      pdf.text(formatPrice(product.price), textX, y + cardHeight - 5);
+      pdf.text(formatPrice(product.price), textX, textY + 10 + (displayLines.length * 3) + 5);
     }
 
     addFooter(pdf, pageIndex + 1, totalPages);
