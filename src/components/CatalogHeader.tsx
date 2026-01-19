@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ImageIcon, FileText, Pencil, Check } from 'lucide-react';
+import { ImageIcon, FileText, Pencil, Check, Save } from 'lucide-react';
 
 interface CatalogHeaderProps {
   title: string;
@@ -9,6 +9,8 @@ interface CatalogHeaderProps {
   onCustomizeBackground: () => void;
   onGeneratePDF: () => void;
   isGeneratingPDF: boolean;
+  onSaveProject: () => void;
+  isSaving: boolean;
 }
 
 export function CatalogHeader({
@@ -17,6 +19,8 @@ export function CatalogHeader({
   onCustomizeBackground,
   onGeneratePDF,
   isGeneratingPDF,
+  onSaveProject,
+  isSaving,
 }: CatalogHeaderProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(title);
@@ -72,6 +76,10 @@ export function CatalogHeader({
           <Button variant="outline" onClick={onCustomizeBackground}>
             <ImageIcon className="mr-2 h-4 w-4" />
             Customizar Fundo
+          </Button>
+          <Button variant="outline" onClick={onSaveProject} disabled={isSaving}>
+            <Save className="mr-2 h-4 w-4" />
+            {isSaving ? 'Salvando...' : 'Salvar Projeto'}
           </Button>
           <Button onClick={onGeneratePDF} disabled={isGeneratingPDF}>
             <FileText className="mr-2 h-4 w-4" />

@@ -51,20 +51,27 @@ const demoProducts: Omit<Product, 'id'>[] = [
 ];
 
 const Index = () => {
-  const { products, addProduct, updateProduct, removeProduct, initializeWithDemoProducts } = useProducts();
+  const { products, addProduct, updateProduct, removeProduct, initializeWithDemoProducts, saveProducts, loadProducts, isSaving, isLoading } = useProducts();
   const [catalogTitle, setCatalogTitle] = useState('Meu Catálogo');
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
   const [isProductFormOpen, setIsProductFormOpen] = useState(false);
   const [isBackgroundModalOpen, setIsBackgroundModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [hasLoadedFromDb, setHasLoadedFromDb] = useState(false);
   const { toast } = useToast();
 
-  // Carrega produtos demo no estado ao inicializar
+  // Carrega produtos do banco ao inicializar
   useEffect(() => {
-    if (products.length === 0) {
-      initializeWithDemoProducts(demoProducts);
-    }
+    const init = async () => {
+      const loaded = await loadProducts();
+      setHasLoadedFromDb(true);
+      if (!loaded) {
+        // Se não tinha produtos salvos, carrega os demo
+        initializeWithDemoProducts(demoProducts);
+      }
+    };
+    init();
   }, []);
 
   const handleEditProduct = (product: Product) => {
@@ -76,6 +83,22 @@ const Index = () => {
     setIsProductFormOpen(open);
     if (!open) {
       setEditingProduct(null);
+    }
+  };
+
+  const handleSaveProject = async () => {
+    const success = await saveProducts();
+    if (success) {
+      toast({
+        title: 'Projeto salvo!',
+        description: 'Seus produtos foram salvos com sucesso.',
+      });
+    } else {
+      toast({
+        title: 'Erro ao salvar',
+        description: 'Ocorreu um erro ao salvar o projeto. Tente novamente.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -127,6 +150,8 @@ const Index = () => {
         onCustomizeBackground={() => setIsBackgroundModalOpen(true)}
         onGeneratePDF={handleGeneratePDF}
         isGeneratingPDF={isGeneratingPDF}
+        onSaveProject={handleSaveProject}
+        isSaving={isSaving}
       />
 
       <main className="container mx-auto px-3 py-4 sm:px-4 sm:py-8">
