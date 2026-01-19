@@ -24,10 +24,19 @@ export function useProducts() {
     setProducts((prev) => prev.filter((product) => product.id !== id));
   }, []);
 
+  const initializeWithDemoProducts = useCallback((demoProducts: Omit<Product, 'id'>[]) => {
+    const productsWithIds: Product[] = demoProducts.map((product) => ({
+      ...product,
+      id: crypto.randomUUID(),
+    }));
+    setProducts(productsWithIds);
+  }, []);
+
   return {
     products,
     addProduct,
     updateProduct,
     removeProduct,
+    initializeWithDemoProducts,
   };
 }
