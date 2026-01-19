@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useProducts } from '@/hooks/useProducts';
 import { Product } from '@/types/product';
 import { CatalogHeader } from '@/components/CatalogHeader';
@@ -11,44 +11,38 @@ import { Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 // Produtos fictícios para demonstração
-const demoProducts: Product[] = [
+const demoProducts: Omit<Product, 'id'>[] = [
   {
-    id: '1',
     name: 'Relógio Elegance Gold',
     description: 'Relógio de pulso com acabamento dourado e pulseira de couro legítimo. Design clássico e sofisticado.',
     price: 1890.00,
     image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop',
   },
   {
-    id: '2',
     name: 'Bolsa Premium Leather',
     description: 'Bolsa feminina em couro italiano, com forro interno em seda. Ideal para ocasiões especiais.',
     price: 2450.00,
     image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=400&h=400&fit=crop',
   },
   {
-    id: '3',
     name: 'Óculos Solar Luxe',
     description: 'Óculos de sol com lentes polarizadas e armação em titânio. Proteção UV400.',
     price: 890.00,
     image: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=400&h=400&fit=crop',
   },
   {
-    id: '4',
     name: 'Perfume Noir Intense',
     description: 'Fragrância masculina com notas de âmbar, baunilha e madeira de cedro.',
     price: 520.00,
     image: 'https://images.unsplash.com/photo-1541643600914-78b084683601?w=400&h=400&fit=crop',
   },
   {
-    id: '5',
     name: 'Carteira Executive',
     description: 'Carteira slim em couro genuíno com porta-cartões e compartimento para notas.',
     price: 380.00,
     image: 'https://images.unsplash.com/photo-1627123424574-724758594e93?w=400&h=400&fit=crop',
   },
   {
-    id: '6',
     name: 'Cinto Classic Brown',
     description: 'Cinto masculino de couro com fivela em aço inoxidável escovado.',
     price: 290.00,
@@ -57,7 +51,7 @@ const demoProducts: Product[] = [
 ];
 
 const Index = () => {
-  const { products: savedProducts, addProduct, updateProduct, removeProduct } = useProducts();
+  const { products, addProduct, updateProduct, removeProduct, initializeWithDemoProducts } = useProducts();
   const [catalogTitle, setCatalogTitle] = useState('Meu Catálogo');
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
   const [isProductFormOpen, setIsProductFormOpen] = useState(false);
@@ -66,8 +60,12 @@ const Index = () => {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const { toast } = useToast();
 
-  // Usa produtos demo se não houver produtos salvos
-  const products = savedProducts.length > 0 ? savedProducts : demoProducts;
+  // Carrega produtos demo no estado ao inicializar
+  useEffect(() => {
+    if (products.length === 0) {
+      initializeWithDemoProducts(demoProducts);
+    }
+  }, []);
 
   const handleEditProduct = (product: Product) => {
     setEditingProduct(product);
