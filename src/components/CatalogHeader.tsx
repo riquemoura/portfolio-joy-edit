@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ImageIcon, FileText, Pencil, Check, Save } from 'lucide-react';
+import { ImageIcon, FileText, Pencil, Check, Save, Plus, ArrowUpDown } from 'lucide-react';
 
 interface CatalogHeaderProps {
   title: string;
@@ -11,6 +11,9 @@ interface CatalogHeaderProps {
   isGeneratingPDF: boolean;
   onSaveProject: () => void;
   isSaving: boolean;
+  onAddProduct: () => void;
+  onEditOrder: () => void;
+  isEditingOrder: boolean;
 }
 
 export function CatalogHeader({
@@ -21,6 +24,9 @@ export function CatalogHeader({
   isGeneratingPDF,
   onSaveProject,
   isSaving,
+  onAddProduct,
+  onEditOrder,
+  isEditingOrder,
 }: CatalogHeaderProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(title);
@@ -73,6 +79,14 @@ export function CatalogHeader({
           )}
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={onAddProduct}>
+            <Plus className="mr-2 h-4 w-4" />
+            Adicionar Produto
+          </Button>
+          <Button variant="outline" onClick={onEditOrder}>
+            <ArrowUpDown className="mr-2 h-4 w-4" />
+            {isEditingOrder ? 'Concluir Ordem' : 'Editar Ordem'}
+          </Button>
           <Button variant="outline" onClick={onCustomizeBackground}>
             <ImageIcon className="mr-2 h-4 w-4" />
             Customizar Fundo

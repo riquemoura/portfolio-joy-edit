@@ -86,6 +86,15 @@ export function useProducts() {
     setProducts((prev) => prev.filter((product) => product.id !== id));
   }, []);
 
+  const reorderProducts = useCallback((startIndex: number, endIndex: number) => {
+    setProducts((prev) => {
+      const result = Array.from(prev);
+      const [removed] = result.splice(startIndex, 1);
+      result.splice(endIndex, 0, removed);
+      return result;
+    });
+  }, []);
+
   const initializeWithDemoProducts = useCallback((demoProducts: Omit<Product, 'id'>[]) => {
     const productsWithIds: Product[] = demoProducts.map((product) => ({
       ...product,
@@ -99,6 +108,7 @@ export function useProducts() {
     addProduct,
     updateProduct,
     removeProduct,
+    reorderProducts,
     initializeWithDemoProducts,
     saveProducts,
     loadProducts,
