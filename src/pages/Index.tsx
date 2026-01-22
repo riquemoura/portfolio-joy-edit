@@ -3,11 +3,10 @@ import { useProducts } from '@/hooks/useProducts';
 import { Product } from '@/types/product';
 import { CatalogHeader } from '@/components/CatalogHeader';
 import { ProductCard } from '@/components/ProductCard';
+import { ProductCardReorder } from '@/components/ProductCardReorder';
 import { ProductForm } from '@/components/ProductForm';
 import { BackgroundModal } from '@/components/BackgroundModal';
 import { generateCatalogPDF } from '@/utils/generatePDF';
-import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 // Produtos fictícios para demonstração
@@ -51,7 +50,7 @@ const demoProducts: Omit<Product, 'id'>[] = [
 ];
 
 const Index = () => {
-  const { products, addProduct, updateProduct, removeProduct, initializeWithDemoProducts, saveProducts, loadProducts, isSaving, isLoading } = useProducts();
+  const { products, addProduct, updateProduct, removeProduct, initializeWithDemoProducts, saveProducts, loadProducts, isSaving, isLoading, reorderProducts } = useProducts();
   const [catalogTitle, setCatalogTitle] = useState('Meu Catálogo');
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
   const [isProductFormOpen, setIsProductFormOpen] = useState(false);
@@ -59,6 +58,7 @@ const Index = () => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [hasLoadedFromDb, setHasLoadedFromDb] = useState(false);
+  const [isEditingOrder, setIsEditingOrder] = useState(false);
   const { toast } = useToast();
 
   // Carrega produtos do banco ao inicializar
@@ -152,29 +152,39 @@ const Index = () => {
         isGeneratingPDF={isGeneratingPDF}
         onSaveProject={handleSaveProject}
         isSaving={isSaving}
+        onAddProduct={() => setIsProductFormOpen(true)}
+        onEditOrder={() => setIsEditingOrder(!isEditingOrder)}
+        isEditingOrder={isEditingOrder}
       />
 
       <main className="container mx-auto px-3 py-4 sm:px-4 sm:py-8">
         <div className="mb-4 flex items-center justify-between">
           <p className="text-sm text-muted-foreground sm:text-base">
             {products.length} produto{products.length !== 1 ? 's' : ''} no catálogo
+            {isEditingOrder && <span className="ml-2 text-primary">(Arraste para reordenar)</span>}
           </p>
-          <Button size="sm" onClick={() => setIsProductFormOpen(true)} className="sm:size-default">
-            <Plus className="mr-1 h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Adicionar Produto</span>
-            <span className="sm:hidden">Adicionar</span>
-          </Button>
         </div>
         
         {/* Grid otimizado para mobile - 2 colunas */}
         <div className="grid grid-cols-2 gap-3 sm:gap-4 md:gap-6 lg:grid-cols-3 xl:grid-cols-4">
-          {products.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              onEdit={handleEditProduct}
-              onRemove={removeProduct}
-            />
+          {products.map((product, index) => (
+            isEditingOrder ? (
+              <ProductCardReorder
+                key={product.id}
+                product={product}
+                index={index}
+                totalProducts={products.length}
+                onMoveUp={() => reorderProducts(index, index - 1)}
+                onMoveDown={() => reorderProducts(index, index + 1)}
+              />
+            ) : (
+              <ProductCard
+                key={product.id}
+                product={product}
+                onEdit={handleEditProduct}
+                onRemove={removeProduct}
+              />
+            )
           ))}
         </div>
       </main>
