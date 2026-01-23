@@ -8,27 +8,60 @@ export function useProducts() {
   const [isLoading, setIsLoading] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const productsRef = useRef<Product[]>([]);
 
-  // Auto-save com debounce de 1 segundo após cada alteração
+  // Mantém a ref atualizada com o estado atual
+  useEffect(() => {
+    productsRef.current = products;
+  }, [products]);
+
+  // Função interna de salvamento
+  const saveProductsInternal = useCallback(async () => {
+    const currentProducts = productsRef.current;
+    setIsSaving(true);
+    try {
+      await supabase.from('products').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+
+      const productsToSave = currentProducts.map((p) => ({
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        price: p.price,
+        image_url: p.image,
+      }));
+
+      if (productsToSave.length > 0) {
+        const { error } = await supabase.from('products').insert(productsToSave);
+        if (error) throw error;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Erro ao salvar produtos:', error);
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  }, []);
+
+  // Auto-save com debounce de 1.5 segundos após cada alteração
   useEffect(() => {
     if (!hasInitialized) return;
 
-    // Limpa o timeout anterior se existir
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
 
-    // Agenda novo salvamento
     saveTimeoutRef.current = setTimeout(() => {
-      saveProducts();
-    }, 1000);
+      saveProductsInternal();
+    }, 1500);
 
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [products, hasInitialized]);
+  }, [products, hasInitialized, saveProductsInternal]);
 
   const loadProducts = useCallback(async () => {
     setIsLoading(true);
@@ -49,11 +82,9 @@ export function useProducts() {
           image: p.image_url || '',
         }));
         setProducts(loadedProducts);
-        setHasInitialized(true);
-        return true; // Indica que carregou produtos do banco
       }
       setHasInitialized(true);
-      return false; // Não tinha produtos salvos
+      return data && data.length > 0;
     } catch (error) {
       console.error('Erro ao carregar produtos:', error);
       setHasInitialized(true);
@@ -64,33 +95,8 @@ export function useProducts() {
   }, []);
 
   const saveProducts = useCallback(async () => {
-    setIsSaving(true);
-    try {
-      // Limpa todos os produtos existentes no banco
-      await supabase.from('products').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-
-      // Insere todos os produtos atuais
-      const productsToSave = products.map((p) => ({
-        id: p.id,
-        name: p.name,
-        description: p.description,
-        price: p.price,
-        image_url: p.image,
-      }));
-
-      if (productsToSave.length > 0) {
-        const { error } = await supabase.from('products').insert(productsToSave);
-        if (error) throw error;
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Erro ao salvar produtos:', error);
-      return false;
-    } finally {
-      setIsSaving(false);
-    }
-  }, [products]);
+    return saveProductsInternal();
+  }, [saveProductsInternal]);
 
   const addProduct = useCallback((product: Omit<Product, 'id'>) => {
     const newProduct: Product = {
@@ -121,22 +127,12 @@ export function useProducts() {
     });
   }, []);
 
-  const initializeWithDemoProducts = useCallback((demoProducts: Omit<Product, 'id'>[]) => {
-    const productsWithIds: Product[] = demoProducts.map((product) => ({
-      ...product,
-      id: crypto.randomUUID(),
-    }));
-    setProducts(productsWithIds);
-    setHasInitialized(true);
-  }, []);
-
   return {
     products,
     addProduct,
     updateProduct,
     removeProduct,
     reorderProducts,
-    initializeWithDemoProducts,
     saveProducts,
     loadProducts,
     isSaving,

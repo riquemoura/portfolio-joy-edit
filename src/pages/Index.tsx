@@ -9,69 +9,20 @@ import { BackgroundModal } from '@/components/BackgroundModal';
 import { generateCatalogPDF } from '@/utils/generatePDF';
 import { useToast } from '@/hooks/use-toast';
 
-// Produtos fictícios para demonstração
-const demoProducts: Omit<Product, 'id'>[] = [
-  {
-    name: 'Relógio Elegance Gold',
-    description: 'Relógio de pulso com acabamento dourado e pulseira de couro legítimo. Design clássico e sofisticado.',
-    price: 1890.00,
-    image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop',
-  },
-  {
-    name: 'Bolsa Premium Leather',
-    description: 'Bolsa feminina em couro italiano, com forro interno em seda. Ideal para ocasiões especiais.',
-    price: 2450.00,
-    image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=400&h=400&fit=crop',
-  },
-  {
-    name: 'Óculos Solar Luxe',
-    description: 'Óculos de sol com lentes polarizadas e armação em titânio. Proteção UV400.',
-    price: 890.00,
-    image: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=400&h=400&fit=crop',
-  },
-  {
-    name: 'Perfume Noir Intense',
-    description: 'Fragrância masculina com notas de âmbar, baunilha e madeira de cedro.',
-    price: 520.00,
-    image: 'https://images.unsplash.com/photo-1541643600914-78b084683601?w=400&h=400&fit=crop',
-  },
-  {
-    name: 'Carteira Executive',
-    description: 'Carteira slim em couro genuíno com porta-cartões e compartimento para notas.',
-    price: 380.00,
-    image: 'https://images.unsplash.com/photo-1627123424574-724758594e93?w=400&h=400&fit=crop',
-  },
-  {
-    name: 'Cinto Classic Brown',
-    description: 'Cinto masculino de couro com fivela em aço inoxidável escovado.',
-    price: 290.00,
-    image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&h=400&fit=crop',
-  },
-];
-
 const Index = () => {
-  const { products, addProduct, updateProduct, removeProduct, initializeWithDemoProducts, saveProducts, loadProducts, isSaving, isLoading, reorderProducts } = useProducts();
+  const { products, addProduct, updateProduct, removeProduct, saveProducts, loadProducts, isSaving, isLoading, reorderProducts } = useProducts();
   const [catalogTitle, setCatalogTitle] = useState('Meu Catálogo');
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
   const [isProductFormOpen, setIsProductFormOpen] = useState(false);
   const [isBackgroundModalOpen, setIsBackgroundModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-  const [hasLoadedFromDb, setHasLoadedFromDb] = useState(false);
   const [isEditingOrder, setIsEditingOrder] = useState(false);
   const { toast } = useToast();
 
-  // Carrega produtos do banco ao inicializar
+  // Carrega produtos do banco ao inicializar (sem produtos demo)
   useEffect(() => {
-    const init = async () => {
-      const loaded = await loadProducts();
-      setHasLoadedFromDb(true);
-      if (!loaded) {
-        // Se não tinha produtos salvos, carrega os demo
-        initializeWithDemoProducts(demoProducts);
-      }
-    };
-    init();
+    loadProducts();
   }, []);
 
   const handleEditProduct = (product: Product) => {
