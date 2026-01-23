@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Product } from '@/types/product';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -6,6 +6,29 @@ export function useProducts() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasInitialized, setHasInitialized] = useState(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Auto-save com debounce de 1 segundo após cada alteração
+  useEffect(() => {
+    if (!hasInitialized) return;
+
+    // Limpa o timeout anterior se existir
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    // Agenda novo salvamento
+    saveTimeoutRef.current = setTimeout(() => {
+      saveProducts();
+    }, 1000);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [products, hasInitialized]);
 
   const loadProducts = useCallback(async () => {
     setIsLoading(true);
@@ -26,11 +49,14 @@ export function useProducts() {
           image: p.image_url || '',
         }));
         setProducts(loadedProducts);
+        setHasInitialized(true);
         return true; // Indica que carregou produtos do banco
       }
+      setHasInitialized(true);
       return false; // Não tinha produtos salvos
     } catch (error) {
       console.error('Erro ao carregar produtos:', error);
+      setHasInitialized(true);
       return false;
     } finally {
       setIsLoading(false);
@@ -101,6 +127,7 @@ export function useProducts() {
       id: crypto.randomUUID(),
     }));
     setProducts(productsWithIds);
+    setHasInitialized(true);
   }, []);
 
   return {
