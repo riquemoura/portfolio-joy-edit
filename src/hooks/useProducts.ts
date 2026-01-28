@@ -2,25 +2,35 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { Product } from '@/types/product';
 import { supabase } from '@/integrations/supabase/client';
 
-export function useProducts() {
+export function useProducts(catalogId: string | null) {
   const [products, setProducts] = useState<Product[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const productsRef = useRef<Product[]>([]);
+  const catalogIdRef = useRef<string | null>(catalogId);
 
-  // Mantém a ref atualizada com o estado atual
+  // Mantém as refs atualizadas
   useEffect(() => {
     productsRef.current = products;
   }, [products]);
 
+  useEffect(() => {
+    catalogIdRef.current = catalogId;
+  }, [catalogId]);
+
   // Função interna de salvamento
   const saveProductsInternal = useCallback(async () => {
     const currentProducts = productsRef.current;
+    const currentCatalogId = catalogIdRef.current;
+    
+    if (!currentCatalogId) return false;
+    
     setIsSaving(true);
     try {
-      await supabase.from('products').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      // Remove todos os produtos do catálogo atual
+      await supabase.from('products').delete().eq('catalog_id', currentCatalogId);
 
       const productsToSave = currentProducts.map((p) => ({
         id: p.id,
@@ -28,6 +38,7 @@ export function useProducts() {
         description: p.description,
         price: p.price,
         image_url: p.image,
+        catalog_id: currentCatalogId,
       }));
 
       if (productsToSave.length > 0) {
@@ -46,7 +57,7 @@ export function useProducts() {
 
   // Auto-save com debounce de 1.5 segundos após cada alteração
   useEffect(() => {
-    if (!hasInitialized) return;
+    if (!hasInitialized || !catalogId) return;
 
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
@@ -61,14 +72,23 @@ export function useProducts() {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [products, hasInitialized, saveProductsInternal]);
+  }, [products, hasInitialized, saveProductsInternal, catalogId]);
+
+  // Reseta quando muda de catálogo
+  useEffect(() => {
+    setProducts([]);
+    setHasInitialized(false);
+  }, [catalogId]);
 
   const loadProducts = useCallback(async () => {
+    if (!catalogId) return false;
+    
     setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from('products')
         .select('*')
+        .eq('catalog_id', catalogId)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
@@ -82,6 +102,8 @@ export function useProducts() {
           image: p.image_url || '',
         }));
         setProducts(loadedProducts);
+      } else {
+        setProducts([]);
       }
       setHasInitialized(true);
       return data && data.length > 0;
@@ -92,7 +114,7 @@ export function useProducts() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [catalogId]);
 
   const saveProducts = useCallback(async () => {
     return saveProductsInternal();

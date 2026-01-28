@@ -1,29 +1,63 @@
 import { useState, useEffect } from 'react';
 import { useProducts } from '@/hooks/useProducts';
+import { useCatalogs } from '@/hooks/useCatalogs';
 import { Product } from '@/types/product';
 import { CatalogHeader } from '@/components/CatalogHeader';
 import { ProductCard } from '@/components/ProductCard';
 import { ProductCardReorder } from '@/components/ProductCardReorder';
 import { ProductForm } from '@/components/ProductForm';
 import { BackgroundModal } from '@/components/BackgroundModal';
+import { CatalogSelector } from '@/components/CatalogSelector';
 import { generateCatalogPDF } from '@/utils/generatePDF';
 import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
-  const { products, addProduct, updateProduct, removeProduct, saveProducts, loadProducts, isSaving, isLoading, reorderProducts } = useProducts();
-  const [catalogTitle, setCatalogTitle] = useState('Meu Catálogo');
+  const {
+    catalogs,
+    currentCatalog,
+    loadCatalogs,
+    createCatalog,
+    updateCatalog,
+    deleteCatalog,
+    selectCatalog,
+  } = useCatalogs();
+
+  const { products, addProduct, updateProduct, removeProduct, saveProducts, loadProducts, isSaving, isLoading, reorderProducts } = useProducts(currentCatalog?.id ?? null);
+  
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
   const [isProductFormOpen, setIsProductFormOpen] = useState(false);
   const [isBackgroundModalOpen, setIsBackgroundModalOpen] = useState(false);
+  const [isCatalogSelectorOpen, setIsCatalogSelectorOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [isEditingOrder, setIsEditingOrder] = useState(false);
   const { toast } = useToast();
 
-  // Carrega produtos do banco ao inicializar (sem produtos demo)
+  // Carrega catálogos ao inicializar
   useEffect(() => {
-    loadProducts();
+    loadCatalogs();
   }, []);
+
+  // Carrega produtos quando o catálogo muda
+  useEffect(() => {
+    if (currentCatalog) {
+      loadProducts();
+      setBackgroundImage(currentCatalog.backgroundImage);
+    }
+  }, [currentCatalog?.id]);
+
+  // Salva background no catálogo
+  useEffect(() => {
+    if (currentCatalog && backgroundImage !== currentCatalog.backgroundImage) {
+      updateCatalog(currentCatalog.id, { backgroundImage });
+    }
+  }, [backgroundImage]);
+
+  const handleTitleChange = (newTitle: string) => {
+    if (currentCatalog) {
+      updateCatalog(currentCatalog.id, { name: newTitle });
+    }
+  };
 
   const handleEditProduct = (product: Product) => {
     setEditingProduct(product);
@@ -65,7 +99,7 @@ const Index = () => {
 
     setIsGeneratingPDF(true);
     try {
-      await generateCatalogPDF(products, catalogTitle, backgroundImage);
+      await generateCatalogPDF(products, currentCatalog?.name || 'Meu Catálogo', backgroundImage);
       toast({
         title: 'PDF gerado com sucesso!',
         description: 'O download do catálogo foi iniciado.',
@@ -79,6 +113,10 @@ const Index = () => {
     } finally {
       setIsGeneratingPDF(false);
     }
+  };
+
+  const handleRenameCatalog = async (id: string, name: string) => {
+    return updateCatalog(id, { name });
   };
 
   return (
@@ -96,8 +134,8 @@ const Index = () => {
       }
     >
       <CatalogHeader
-        title={catalogTitle}
-        onTitleChange={setCatalogTitle}
+        title={currentCatalog?.name || 'Meu Catálogo'}
+        onTitleChange={handleTitleChange}
         onCustomizeBackground={() => setIsBackgroundModalOpen(true)}
         onGeneratePDF={handleGeneratePDF}
         isGeneratingPDF={isGeneratingPDF}
@@ -106,6 +144,7 @@ const Index = () => {
         onAddProduct={() => setIsProductFormOpen(true)}
         onEditOrder={() => setIsEditingOrder(!isEditingOrder)}
         isEditingOrder={isEditingOrder}
+        onOpenCatalogs={() => setIsCatalogSelectorOpen(true)}
       />
 
       <main className="container mx-auto px-3 py-4 sm:px-4 sm:py-8">
@@ -153,6 +192,17 @@ const Index = () => {
         onOpenChange={setIsBackgroundModalOpen}
         currentBackground={backgroundImage}
         onBackgroundChange={setBackgroundImage}
+      />
+
+      <CatalogSelector
+        open={isCatalogSelectorOpen}
+        onOpenChange={setIsCatalogSelectorOpen}
+        catalogs={catalogs}
+        currentCatalog={currentCatalog}
+        onSelect={selectCatalog}
+        onCreate={createCatalog}
+        onDelete={deleteCatalog}
+        onRename={handleRenameCatalog}
       />
     </div>
   );
