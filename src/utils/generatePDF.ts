@@ -18,6 +18,13 @@ const loadImage = (src: string): Promise<HTMLImageElement> => {
   });
 };
 
+export interface CatalogData {
+  id: string;
+  name: string;
+  products: Product[];
+  backgroundImage: string | null;
+}
+
 export async function generateCatalogPDF(
   products: Product[],
   catalogTitle: string,
@@ -152,4 +159,14 @@ export async function generateCatalogPDF(
   }
 
   pdf.save(`${catalogTitle.toLowerCase().replace(/\s+/g, '-')}.pdf`);
+}
+
+export async function generateMultipleCatalogsPDF(
+  catalogs: CatalogData[]
+): Promise<void> {
+  for (const catalog of catalogs) {
+    if (catalog.products.length > 0) {
+      await generateCatalogPDF(catalog.products, catalog.name, catalog.backgroundImage);
+    }
+  }
 }

@@ -8,8 +8,10 @@ import { ProductCardReorder } from '@/components/ProductCardReorder';
 import { ProductForm } from '@/components/ProductForm';
 import { BackgroundModal } from '@/components/BackgroundModal';
 import { CatalogSelector } from '@/components/CatalogSelector';
-import { generateCatalogPDF } from '@/utils/generatePDF';
+import { PDFGeneratorModal } from '@/components/PDFGeneratorModal';
+import { generateCatalogPDF, CatalogData } from '@/utils/generatePDF';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const {
@@ -28,6 +30,7 @@ const Index = () => {
   const [isProductFormOpen, setIsProductFormOpen] = useState(false);
   const [isBackgroundModalOpen, setIsBackgroundModalOpen] = useState(false);
   const [isCatalogSelectorOpen, setIsCatalogSelectorOpen] = useState(false);
+  const [isPDFModalOpen, setIsPDFModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [isEditingOrder, setIsEditingOrder] = useState(false);
@@ -87,24 +90,54 @@ const Index = () => {
     }
   };
 
-  const handleGeneratePDF = async () => {
-    if (products.length === 0) {
-      toast({
-        title: 'Catálogo vazio',
-        description: 'Adicione pelo menos um produto antes de gerar o PDF.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
+  const handleGeneratePDF = async (catalogIds: string[]) => {
     setIsGeneratingPDF(true);
     try {
-      await generateCatalogPDF(products, currentCatalog?.name || 'Meu Catálogo', backgroundImage);
-      toast({
-        title: 'PDF gerado com sucesso!',
-        description: 'O download do catálogo foi iniciado.',
-      });
+      let generatedCount = 0;
+      
+      for (const catalogId of catalogIds) {
+        const catalog = catalogs.find((c) => c.id === catalogId);
+        if (!catalog) continue;
+
+        // Busca produtos do catálogo
+        const { data: catalogProducts, error } = await supabase
+          .from('products')
+          .select('*')
+          .eq('catalog_id', catalogId)
+          .order('created_at', { ascending: true });
+
+        if (error) throw error;
+
+        if (catalogProducts && catalogProducts.length > 0) {
+          const productsForPDF: Product[] = catalogProducts.map((p) => ({
+            id: p.id,
+            name: p.name,
+            description: p.description || '',
+            price: Number(p.price),
+            image: p.image_url || '',
+          }));
+
+          await generateCatalogPDF(productsForPDF, catalog.name, catalog.backgroundImage);
+          generatedCount++;
+        }
+      }
+
+      if (generatedCount > 0) {
+        toast({
+          title: 'PDF gerado com sucesso!',
+          description: generatedCount > 1 
+            ? `${generatedCount} catálogos foram gerados.`
+            : 'O download do catálogo foi iniciado.',
+        });
+      } else {
+        toast({
+          title: 'Catálogos vazios',
+          description: 'Os catálogos selecionados não possuem produtos.',
+          variant: 'destructive',
+        });
+      }
     } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
       toast({
         title: 'Erro ao gerar PDF',
         description: 'Ocorreu um erro ao gerar o catálogo. Tente novamente.',
@@ -137,7 +170,7 @@ const Index = () => {
         title={currentCatalog?.name || 'Meu Catálogo'}
         onTitleChange={handleTitleChange}
         onCustomizeBackground={() => setIsBackgroundModalOpen(true)}
-        onGeneratePDF={handleGeneratePDF}
+        onGeneratePDF={() => setIsPDFModalOpen(true)}
         isGeneratingPDF={isGeneratingPDF}
         onSaveProject={handleSaveProject}
         isSaving={isSaving}
@@ -203,6 +236,15 @@ const Index = () => {
         onCreate={createCatalog}
         onDelete={deleteCatalog}
         onRename={handleRenameCatalog}
+      />
+
+      <PDFGeneratorModal
+        open={isPDFModalOpen}
+        onOpenChange={setIsPDFModalOpen}
+        catalogs={catalogs}
+        currentCatalogId={currentCatalog?.id ?? null}
+        onGenerate={handleGeneratePDF}
+        isGenerating={isGeneratingPDF}
       />
     </div>
   );
