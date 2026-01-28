@@ -40,10 +40,12 @@ export async function generateCatalogPDF(
   const pageHeight = pdf.internal.pageSize.getHeight();
   const margin = 15;
   const cardWidth = (pageWidth - margin * 3) / 2;
-  const imageSize = 70;
-  const startY = 45;
-  const cardPadding = 5;
-  const lineHeight = 3.5; // altura de cada linha de descrição
+  const imageSize = 55; // Tamanho da imagem reduzido para caber 4 por página
+  const startY = 40;
+  const cardPadding = 4;
+  const lineHeight = 3.2; // altura de cada linha de descrição
+  const productsPerPage = 4; // 2x2 grid
+  const cardHeight = (pageHeight - startY - 25) / 2 - 5; // Altura fixa para 2 linhas
 
   const addBackground = async (pdfDoc: jsPDF) => {
     if (backgroundImage) {
@@ -63,80 +65,31 @@ export async function generateCatalogPDF(
 
   const addHeader = (pdfDoc: jsPDF) => {
     pdfDoc.setFont('helvetica', 'bold');
-    pdfDoc.setFontSize(24);
+    pdfDoc.setFontSize(22);
     pdfDoc.setTextColor(40, 40, 40);
-    pdfDoc.text(catalogTitle, pageWidth / 2, 25, { align: 'center' });
+    pdfDoc.text(catalogTitle, pageWidth / 2, 22, { align: 'center' });
     
     pdfDoc.setDrawColor(180, 160, 140);
     pdfDoc.setLineWidth(0.5);
-    pdfDoc.line(margin, 32, pageWidth - margin, 32);
+    pdfDoc.line(margin, 28, pageWidth - margin, 28);
   };
 
   const addFooter = (pdfDoc: jsPDF, pageNum: number, totalPages: number) => {
     pdfDoc.setFont('helvetica', 'normal');
-    pdfDoc.setFontSize(10);
+    pdfDoc.setFontSize(9);
     pdfDoc.setTextColor(120, 120, 120);
     pdfDoc.text(
       `Página ${pageNum} de ${totalPages}`,
       pageWidth / 2,
-      pageHeight - 10,
+      pageHeight - 8,
       { align: 'center' }
     );
   };
-  // Função para calcular altura do card baseado na descrição
-  const calculateCardHeight = (description: string): number => {
-    const textWidth = cardWidth - 10;
-    const descLines = pdf.splitTextToSize(description, textWidth);
-    const baseHeight = imageSize + 5 + 8 + 5; // imagem + espaço + nome + espaço
-    const descHeight = descLines.length * lineHeight;
-    const priceHeight = 8;
-    return baseHeight + descHeight + priceHeight + cardPadding * 2;
-  };
 
-  // Organiza produtos em páginas dinamicamente
+  // Organiza produtos em páginas de 4 produtos cada
   const pages: Product[][] = [];
-  let currentPage: Product[] = [];
-  let currentY = startY;
-  let currentCol = 0;
-  let rowHeights: number[] = [];
-
-  for (const product of products) {
-    const cardHeight = calculateCardHeight(product.description);
-    
-    // Se é uma nova linha (col 0) ou segunda coluna
-    if (currentCol === 0) {
-      rowHeights.push(cardHeight);
-    } else {
-      // Atualiza altura da linha para o maior card
-      rowHeights[rowHeights.length - 1] = Math.max(rowHeights[rowHeights.length - 1], cardHeight);
-    }
-
-    const rowHeight = rowHeights[rowHeights.length - 1];
-    
-    // Verifica se cabe na página atual
-    if (currentY + rowHeight > pageHeight - 20) {
-      // Nova página
-      if (currentPage.length > 0) {
-        pages.push(currentPage);
-      }
-      currentPage = [product];
-      currentY = startY + cardHeight + 10;
-      currentCol = 1;
-      rowHeights = [cardHeight];
-    } else {
-      currentPage.push(product);
-      if (currentCol === 1) {
-        // Fim da linha, avança Y
-        currentY += rowHeight + 10;
-        currentCol = 0;
-      } else {
-        currentCol = 1;
-      }
-    }
-  }
-  
-  if (currentPage.length > 0) {
-    pages.push(currentPage);
+  for (let i = 0; i < products.length; i += productsPerPage) {
+    pages.push(products.slice(i, i + productsPerPage));
   }
 
   for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
@@ -148,30 +101,20 @@ export async function generateCatalogPDF(
     addHeader(pdf);
 
     const pageProducts = pages[pageIndex];
-    let yPosition = startY;
-    let maxRowHeight = 0;
+    const rowHeight = cardHeight;
 
     for (let i = 0; i < pageProducts.length; i++) {
       const product = pageProducts[i];
       const col = i % 2;
-      const cardHeight = calculateCardHeight(product.description);
+      const row = Math.floor(i / 2);
       
-      if (col === 0) {
-        if (i > 0) {
-          yPosition += maxRowHeight + 10;
-        }
-        maxRowHeight = cardHeight;
-      } else {
-        maxRowHeight = Math.max(maxRowHeight, cardHeight);
-      }
-
       const x = margin + col * (cardWidth + margin);
-      const y = yPosition;
+      const y = startY + row * (rowHeight + 5);
 
       // Card background
       pdf.setFillColor(250, 250, 250);
       pdf.setDrawColor(220, 220, 220);
-      pdf.roundedRect(x, y, cardWidth, cardHeight, 3, 3, 'FD');
+      pdf.roundedRect(x, y, cardWidth, rowHeight, 3, 3, 'FD');
 
       // Product image - centered at top
       const imgX = x + (cardWidth - imageSize) / 2;
