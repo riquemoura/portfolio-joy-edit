@@ -14,8 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      catalogs: {
+        Row: {
+          background_image: string | null
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          background_image?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Update: {
+          background_image?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
+          catalog_id: string
           created_at: string
           description: string | null
           id: string
@@ -25,6 +50,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          catalog_id: string
           created_at?: string
           description?: string | null
           id?: string
@@ -34,6 +60,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          catalog_id?: string
           created_at?: string
           description?: string | null
           id?: string
@@ -42,7 +69,15 @@ export type Database = {
           price?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "products_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalogs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
