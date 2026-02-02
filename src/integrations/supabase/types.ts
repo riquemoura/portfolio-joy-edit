@@ -79,6 +79,42 @@ export type Database = {
           },
         ]
       }
+      products_backup_20260202: {
+        Row: {
+          backed_up_at: string
+          catalog_id: string
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          name: string
+          price: number
+          updated_at: string
+        }
+        Insert: {
+          backed_up_at?: string
+          catalog_id: string
+          created_at: string
+          description?: string | null
+          id: string
+          image_url?: string | null
+          name: string
+          price: number
+          updated_at: string
+        }
+        Update: {
+          backed_up_at?: string
+          catalog_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
