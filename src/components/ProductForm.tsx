@@ -10,8 +10,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { ImagePlus, Crop } from 'lucide-react';
+import { ImagePlus, Crop, Loader2 } from 'lucide-react';
 import { ImageCropper } from './ImageCropper';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface ProductFormProps {
   open: boolean;
@@ -20,6 +22,26 @@ interface ProductFormProps {
   editingProduct?: Product | null;
   onUpdate?: (id: string, updates: Partial<Omit<Product, 'id'>>) => void;
 }
+
+// Função para converter base64 para Blob
+const base64ToBlob = (base64: string): Blob => {
+  const parts = base64.split(';base64,');
+  const contentType = parts[0].split(':')[1];
+  const raw = window.atob(parts[1]);
+  const rawLength = raw.length;
+  const uInt8Array = new Uint8Array(rawLength);
+  
+  for (let i = 0; i < rawLength; ++i) {
+    uInt8Array[i] = raw.charCodeAt(i);
+  }
+  
+  return new Blob([uInt8Array], { type: contentType });
+};
+
+// Verifica se a string é uma URL do Storage
+const isStorageUrl = (url: string): boolean => {
+  return url.includes('supabase.co/storage') || url.startsWith('https://');
+};
 
 export function ProductForm({
   open,
@@ -34,6 +56,8 @@ export function ProductForm({
   const [image, setImage] = useState('');
   const [tempImage, setTempImage] = useState('');
   const [showCropper, setShowCropper] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (editingProduct) {
@@ -67,10 +91,59 @@ export function ProductForm({
     }
   };
 
-  const handleCropComplete = (croppedImage: string) => {
-    setImage(croppedImage);
-    setShowCropper(false);
-    setTempImage('');
+  // Upload da imagem para o Supabase Storage
+  const uploadImageToStorage = async (base64Image: string): Promise<string> => {
+    // Se já for uma URL do storage, retorna ela mesma
+    if (isStorageUrl(base64Image)) {
+      return base64Image;
+    }
+
+    // Se for base64, faz upload
+    if (base64Image.startsWith('data:')) {
+      const blob = base64ToBlob(base64Image);
+      const fileName = `product-${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
+      
+      const { data, error } = await supabase.storage
+        .from('product-images')
+        .upload(fileName, blob, {
+          contentType: 'image/jpeg',
+          upsert: false
+        });
+
+      if (error) {
+        console.error('Erro no upload:', error);
+        throw new Error('Falha ao fazer upload da imagem');
+      }
+
+      // Retorna a URL pública
+      const { data: urlData } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(data.path);
+      
+      return urlData.publicUrl;
+    }
+
+    return base64Image;
+  };
+
+  const handleCropComplete = async (croppedImage: string) => {
+    setIsUploading(true);
+    try {
+      // Faz upload da imagem imediatamente após o crop
+      const imageUrl = await uploadImageToStorage(croppedImage);
+      setImage(imageUrl);
+      setShowCropper(false);
+      setTempImage('');
+    } catch (error) {
+      console.error('Erro ao fazer upload:', error);
+      toast({
+        title: 'Erro no upload',
+        description: 'Não foi possível fazer upload da imagem. Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleCropCancel = () => {
@@ -78,22 +151,41 @@ export function ProductForm({
     setTempImage('');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const productData = {
-      name,
-      description,
-      price: parseFloat(price) || 0,
-      image,
-    };
+    
+    setIsUploading(true);
+    try {
+      // Garante que a imagem está no storage (caso não tenha sido feito crop)
+      let finalImage = image;
+      if (image && image.startsWith('data:')) {
+        finalImage = await uploadImageToStorage(image);
+      }
 
-    if (editingProduct && onUpdate) {
-      onUpdate(editingProduct.id, productData);
-    } else {
-      onSubmit(productData);
+      const productData = {
+        name,
+        description,
+        price: parseFloat(price) || 0,
+        image: finalImage,
+      };
+
+      if (editingProduct && onUpdate) {
+        onUpdate(editingProduct.id, productData);
+      } else {
+        onSubmit(productData);
+      }
+      onOpenChange(false);
+      resetForm();
+    } catch (error) {
+      console.error('Erro ao salvar produto:', error);
+      toast({
+        title: 'Erro ao salvar',
+        description: 'Não foi possível salvar o produto. Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUploading(false);
     }
-    onOpenChange(false);
-    resetForm();
   };
 
   return (
@@ -106,11 +198,18 @@ export function ProductForm({
         </DialogHeader>
         
         {showCropper ? (
-          <ImageCropper
-            image={tempImage}
-            onCropComplete={handleCropComplete}
-            onCancel={handleCropCancel}
-          />
+          isUploading ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="mt-2 text-sm text-muted-foreground">Fazendo upload da imagem...</p>
+            </div>
+          ) : (
+            <ImageCropper
+              image={tempImage}
+              onCropComplete={handleCropComplete}
+              onCancel={handleCropCancel}
+            />
+          )
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -184,6 +283,7 @@ export function ProductForm({
                     accept="image/*"
                     onChange={handleImageUpload}
                     className="w-full cursor-pointer"
+                    disabled={isUploading}
                   />
                 </div>
               </div>
@@ -194,11 +294,19 @@ export function ProductForm({
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
+                disabled={isUploading}
               >
                 Cancelar
               </Button>
-              <Button type="submit">
-                {editingProduct ? 'Salvar Alterações' : 'Adicionar'}
+              <Button type="submit" disabled={isUploading}>
+                {isUploading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  editingProduct ? 'Salvar Alterações' : 'Adicionar'
+                )}
               </Button>
             </div>
           </form>
