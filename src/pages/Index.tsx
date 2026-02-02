@@ -75,16 +75,16 @@ const Index = () => {
   };
 
   const handleSaveProject = async () => {
-    const success = await saveProducts();
-    if (success) {
+    const result = await saveProducts();
+    if (result.success) {
       toast({
         title: 'Projeto salvo!',
-        description: 'Seus produtos foram salvos com sucesso.',
+        description: `${products.length} produto(s) salvos com sucesso.`,
       });
     } else {
       toast({
         title: 'Erro ao salvar',
-        description: 'Ocorreu um erro ao salvar o projeto. Tente novamente.',
+        description: result.error || 'Ocorreu um erro ao salvar o projeto. Tente novamente.',
         variant: 'destructive',
       });
     }
