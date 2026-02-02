@@ -22,45 +22,64 @@ export function useProducts(catalogId: string | null) {
   }, [catalogId]);
 
   // Função interna de salvamento (ATÔMICA - previne perda de dados)
-  const saveProductsInternal = useCallback(async () => {
+  const saveProductsInternal = useCallback(async (isManualSave = false): Promise<{ success: boolean; error?: string }> => {
     const currentProducts = productsRef.current;
     const currentCatalogId = catalogIdRef.current;
     
-    if (!currentCatalogId) return false;
+    if (!currentCatalogId) {
+      return { success: false, error: 'Nenhum catálogo selecionado' };
+    }
     
     // Proteção: não salvar lista vazia se ainda não carregamos os dados
     if (!hasInitializedRef.current) {
       console.log('Salvamento ignorado: dados ainda não foram carregados');
-      return false;
+      return { success: false, error: 'Dados ainda não carregados' };
     }
     
     setIsSaving(true);
-    try {
-      // Usa função atômica do banco - DELETE + INSERT numa única transação
-      // Se o INSERT falhar, o DELETE é revertido automaticamente
-      const productsToSave = currentProducts.map((p) => ({
-        id: p.id,
-        name: p.name,
-        description: p.description,
-        price: p.price,
-        image_url: p.image,
-      }));
+    
+    // Retry logic para salvamento manual
+    const maxRetries = isManualSave ? 3 : 1;
+    let lastError: Error | null = null;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        // Usa função atômica do banco - DELETE + INSERT numa única transação
+        // Se o INSERT falhar, o DELETE é revertido automaticamente
+        const productsToSave = currentProducts.map((p) => ({
+          id: p.id,
+          name: p.name,
+          description: p.description,
+          price: p.price,
+          image_url: p.image,
+        }));
 
-      const { error } = await supabase.rpc('replace_catalog_products', {
-        p_catalog_id: currentCatalogId,
-        p_products: productsToSave,
-      });
+        const { error } = await supabase.rpc('replace_catalog_products', {
+          p_catalog_id: currentCatalogId,
+          p_products: productsToSave,
+        });
 
-      if (error) throw error;
+        if (error) throw error;
 
-      console.log(`Produtos salvos com sucesso: ${currentProducts.length} itens`);
-      return true;
-    } catch (error) {
-      console.error('Erro ao salvar produtos:', error);
-      return false;
-    } finally {
-      setIsSaving(false);
+        console.log(`Produtos salvos com sucesso: ${currentProducts.length} itens (tentativa ${attempt})`);
+        setIsSaving(false);
+        return { success: true };
+      } catch (error) {
+        lastError = error as Error;
+        console.error(`Erro ao salvar produtos (tentativa ${attempt}/${maxRetries}):`, error);
+        
+        // Aguarda antes de tentar novamente
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        }
+      }
     }
+    
+    setIsSaving(false);
+    return { 
+      success: false, 
+      error: lastError?.message || 'Erro desconhecido ao salvar' 
+    };
   }, []);
 
   // Auto-save com debounce de 1.5 segundos após cada alteração
@@ -127,8 +146,8 @@ export function useProducts(catalogId: string | null) {
     }
   }, [catalogId]);
 
-  const saveProducts = useCallback(async () => {
-    return saveProductsInternal();
+  const saveProducts = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
+    return saveProductsInternal(true); // isManualSave = true para ativar retries
   }, [saveProductsInternal]);
 
   const addProduct = useCallback((product: Omit<Product, 'id'>) => {
