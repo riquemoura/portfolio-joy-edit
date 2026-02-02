@@ -10,6 +10,7 @@ export function useProducts(catalogId: string | null) {
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const productsRef = useRef<Product[]>([]);
   const catalogIdRef = useRef<string | null>(catalogId);
+  const hasInitializedRef = useRef(false);
 
   // Mantém as refs atualizadas
   useEffect(() => {
@@ -20,32 +21,39 @@ export function useProducts(catalogId: string | null) {
     catalogIdRef.current = catalogId;
   }, [catalogId]);
 
-  // Função interna de salvamento
+  // Função interna de salvamento (ATÔMICA - previne perda de dados)
   const saveProductsInternal = useCallback(async () => {
     const currentProducts = productsRef.current;
     const currentCatalogId = catalogIdRef.current;
     
     if (!currentCatalogId) return false;
     
+    // Proteção: não salvar lista vazia se ainda não carregamos os dados
+    if (!hasInitializedRef.current) {
+      console.log('Salvamento ignorado: dados ainda não foram carregados');
+      return false;
+    }
+    
     setIsSaving(true);
     try {
-      // Remove todos os produtos do catálogo atual
-      await supabase.from('products').delete().eq('catalog_id', currentCatalogId);
-
+      // Usa função atômica do banco - DELETE + INSERT numa única transação
+      // Se o INSERT falhar, o DELETE é revertido automaticamente
       const productsToSave = currentProducts.map((p) => ({
         id: p.id,
         name: p.name,
         description: p.description,
         price: p.price,
         image_url: p.image,
-        catalog_id: currentCatalogId,
       }));
 
-      if (productsToSave.length > 0) {
-        const { error } = await supabase.from('products').insert(productsToSave);
-        if (error) throw error;
-      }
+      const { error } = await supabase.rpc('replace_catalog_products', {
+        p_catalog_id: currentCatalogId,
+        p_products: productsToSave,
+      });
 
+      if (error) throw error;
+
+      console.log(`Produtos salvos com sucesso: ${currentProducts.length} itens`);
       return true;
     } catch (error) {
       console.error('Erro ao salvar produtos:', error);
@@ -78,6 +86,7 @@ export function useProducts(catalogId: string | null) {
   useEffect(() => {
     setProducts([]);
     setHasInitialized(false);
+    hasInitializedRef.current = false;
   }, [catalogId]);
 
   const loadProducts = useCallback(async () => {
@@ -106,10 +115,12 @@ export function useProducts(catalogId: string | null) {
         setProducts([]);
       }
       setHasInitialized(true);
+      hasInitializedRef.current = true;
       return data && data.length > 0;
     } catch (error) {
       console.error('Erro ao carregar produtos:', error);
       setHasInitialized(true);
+      hasInitializedRef.current = true;
       return false;
     } finally {
       setIsLoading(false);

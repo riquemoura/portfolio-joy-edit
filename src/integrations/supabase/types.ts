@@ -84,7 +84,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      replace_catalog_products: {
+        Args: { p_catalog_id: string; p_products: Json }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
