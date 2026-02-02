@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useProducts } from '@/hooks/useProducts';
 import { useCatalogs } from '@/hooks/useCatalogs';
 import { Product } from '@/types/product';
@@ -12,6 +12,7 @@ import { PDFGeneratorModal } from '@/components/PDFGeneratorModal';
 import { generateCatalogPDF, CatalogData } from '@/utils/generatePDF';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { migrateBase64ImagesToStorage } from '@/utils/migrateImages';
 
 const Index = () => {
   const {
@@ -34,11 +35,40 @@ const Index = () => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [isEditingOrder, setIsEditingOrder] = useState(false);
+  const [isMigrating, setIsMigrating] = useState(false);
+  const hasMigratedRef = useRef(false);
   const { toast } = useToast();
 
   // Carrega catálogos ao inicializar
   useEffect(() => {
     loadCatalogs();
+  }, []);
+
+  // Migra imagens base64 para storage (apenas uma vez)
+  useEffect(() => {
+    const runMigration = async () => {
+      if (hasMigratedRef.current) return;
+      hasMigratedRef.current = true;
+
+      setIsMigrating(true);
+      try {
+        const result = await migrateBase64ImagesToStorage();
+        if (result.migrated > 0) {
+          toast({
+            title: 'Imagens migradas',
+            description: `${result.migrated} imagem(ns) foram otimizadas para melhor performance.`,
+          });
+          // Recarrega os produtos após migração
+          loadProducts();
+        }
+      } catch (error) {
+        console.error('Erro na migração:', error);
+      } finally {
+        setIsMigrating(false);
+      }
+    };
+
+    runMigration();
   }, []);
 
   // Carrega produtos quando o catálogo muda
