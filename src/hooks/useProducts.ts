@@ -143,7 +143,7 @@ export function useProducts(catalogId: string | null) {
         .from('products')
         .select('*')
         .eq('catalog_id', catalogId)
-        .order('created_at', { ascending: true });
+        .order('position', { ascending: true });
 
       if (error) throw error;
 
