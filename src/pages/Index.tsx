@@ -109,13 +109,14 @@ const Index = () => {
     if (result.success) {
       toast({
         title: 'Projeto salvo!',
-        description: `${products.length} produto(s) salvos com sucesso.`,
+        description: `${result.savedCount ?? products.length} produto(s) salvos e verificados com sucesso.`,
       });
     } else {
       toast({
         title: 'Erro ao salvar',
-        description: result.error || 'Ocorreu um erro ao salvar o projeto. Tente novamente.',
+        description: `${result.error || 'Ocorreu um erro ao salvar o projeto.'} Tente novamente.`,
         variant: 'destructive',
+        duration: 10000, // Mantém visível por mais tempo em caso de erro
       });
     }
   };
