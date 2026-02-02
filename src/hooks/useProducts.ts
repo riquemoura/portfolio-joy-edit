@@ -22,7 +22,7 @@ export function useProducts(catalogId: string | null) {
   }, [catalogId]);
 
   // Função interna de salvamento (ATÔMICA - previne perda de dados)
-  const saveProductsInternal = useCallback(async (isManualSave = false): Promise<{ success: boolean; error?: string }> => {
+  const saveProductsInternal = useCallback(async (isManualSave = false): Promise<{ success: boolean; error?: string; savedCount?: number }> => {
     const currentProducts = productsRef.current;
     const currentCatalogId = catalogIdRef.current;
     
@@ -38,8 +38,8 @@ export function useProducts(catalogId: string | null) {
     
     setIsSaving(true);
     
-    // Retry logic para salvamento manual
-    const maxRetries = isManualSave ? 3 : 1;
+    // Retry logic para salvamento manual (até 5 tentativas com backoff exponencial)
+    const maxRetries = isManualSave ? 5 : 2;
     let lastError: Error | null = null;
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -54,6 +54,8 @@ export function useProducts(catalogId: string | null) {
           image_url: p.image,
         }));
 
+        console.log(`[Save] Tentativa ${attempt}/${maxRetries} - Salvando ${productsToSave.length} produtos...`);
+
         const { error } = await supabase.rpc('replace_catalog_products', {
           p_catalog_id: currentCatalogId,
           p_products: productsToSave,
@@ -61,16 +63,30 @@ export function useProducts(catalogId: string | null) {
 
         if (error) throw error;
 
-        console.log(`Produtos salvos com sucesso: ${currentProducts.length} itens (tentativa ${attempt})`);
+        // Verificação pós-salvamento: confirma que todos foram salvos
+        const { count, error: countError } = await supabase
+          .from('products')
+          .select('*', { count: 'exact', head: true })
+          .eq('catalog_id', currentCatalogId);
+
+        if (countError) {
+          console.warn('Aviso: não foi possível verificar contagem após salvamento');
+        } else if (count !== productsToSave.length) {
+          throw new Error(`Verificação falhou: salvos ${count} de ${productsToSave.length} produtos`);
+        }
+
+        console.log(`✅ Produtos salvos com sucesso: ${productsToSave.length} itens (verificado)`);
         setIsSaving(false);
-        return { success: true };
+        return { success: true, savedCount: productsToSave.length };
       } catch (error) {
         lastError = error as Error;
-        console.error(`Erro ao salvar produtos (tentativa ${attempt}/${maxRetries}):`, error);
+        console.error(`❌ Erro ao salvar produtos (tentativa ${attempt}/${maxRetries}):`, error);
         
-        // Aguarda antes de tentar novamente
+        // Aguarda antes de tentar novamente (backoff exponencial)
         if (attempt < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+          console.log(`Aguardando ${delay}ms antes da próxima tentativa...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
         }
       }
     }
@@ -82,17 +98,27 @@ export function useProducts(catalogId: string | null) {
     };
   }, []);
 
-  // Auto-save com debounce de 1.5 segundos após cada alteração
+  // Auto-save com debounce de 2 segundos após cada alteração
+  // Usa saveProductsInternal(false) para auto-save (menos retries)
   useEffect(() => {
     if (!hasInitialized || !catalogId) return;
+
+    // Só auto-salva se houver produtos (previne salvar lista vazia acidentalmente)
+    if (products.length === 0 && hasInitializedRef.current) {
+      console.log('Auto-save ignorado: lista de produtos vazia');
+      return;
+    }
 
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
 
-    saveTimeoutRef.current = setTimeout(() => {
-      saveProductsInternal();
-    }, 1500);
+    saveTimeoutRef.current = setTimeout(async () => {
+      const result = await saveProductsInternal(false);
+      if (!result.success) {
+        console.warn('⚠️ Auto-save falhou:', result.error);
+      }
+    }, 2000); // Aumentado para 2 segundos para evitar salvamentos muito frequentes
 
     return () => {
       if (saveTimeoutRef.current) {
@@ -146,7 +172,7 @@ export function useProducts(catalogId: string | null) {
     }
   }, [catalogId]);
 
-  const saveProducts = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
+  const saveProducts = useCallback(async (): Promise<{ success: boolean; error?: string; savedCount?: number }> => {
     return saveProductsInternal(true); // isManualSave = true para ativar retries
   }, [saveProductsInternal]);
 
