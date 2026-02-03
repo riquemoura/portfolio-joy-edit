@@ -205,12 +205,24 @@ export function useProducts(catalogId: string | null) {
     });
   }, []);
 
+  const moveProductTo = useCallback((currentIndex: number, targetIndex: number) => {
+    if (currentIndex === targetIndex) return;
+    
+    setProducts((prev) => {
+      const result = Array.from(prev);
+      const [removed] = result.splice(currentIndex, 1);
+      result.splice(targetIndex, 0, removed);
+      return result;
+    });
+  }, []);
+
   return {
     products,
     addProduct,
     updateProduct,
     removeProduct,
     reorderProducts,
+    moveProductTo,
     saveProducts,
     loadProducts,
     isSaving,
