@@ -10,6 +10,7 @@ import { ProductForm } from '@/components/ProductForm';
 import { BackgroundModal } from '@/components/BackgroundModal';
 import { CatalogSelector } from '@/components/CatalogSelector';
 import { PDFGeneratorModal } from '@/components/PDFGeneratorModal';
+import { CardExportModal } from '@/components/CardExportModal';
 import { generateCatalogPDF, CatalogData } from '@/utils/generatePDF';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -34,6 +35,7 @@ const Index = () => {
   const [isBackgroundModalOpen, setIsBackgroundModalOpen] = useState(false);
   const [isCatalogSelectorOpen, setIsCatalogSelectorOpen] = useState(false);
   const [isPDFModalOpen, setIsPDFModalOpen] = useState(false);
+  const [isCardModalOpen, setIsCardModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [isEditingOrder, setIsEditingOrder] = useState(false);
@@ -231,6 +233,7 @@ const Index = () => {
         onEditOrder={() => setIsEditingOrder(!isEditingOrder)}
         isEditingOrder={isEditingOrder}
         onOpenCatalogs={() => setIsCatalogSelectorOpen(true)}
+        onExportCards={() => setIsCardModalOpen(true)}
       />
 
       <main className="container mx-auto px-3 py-4 sm:px-4 sm:py-8">
@@ -319,6 +322,13 @@ const Index = () => {
         currentCatalogId={currentCatalog?.id ?? null}
         onGenerate={handleGeneratePDF}
         isGenerating={isGeneratingPDF}
+      />
+
+      <CardExportModal
+        open={isCardModalOpen}
+        onOpenChange={setIsCardModalOpen}
+        catalogs={catalogs}
+        currentCatalogId={currentCatalog?.id ?? null}
       />
     </div>
   );

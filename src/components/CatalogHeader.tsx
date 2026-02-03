@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ImageIcon, FileText, Pencil, Check, Save, Plus, ArrowUpDown, FolderOpen, SeparatorHorizontal } from 'lucide-react';
+import { ImageIcon, FileText, Pencil, Check, Save, Plus, ArrowUpDown, FolderOpen, SeparatorHorizontal, CreditCard } from 'lucide-react';
 
 interface CatalogHeaderProps {
   title: string;
@@ -16,6 +16,7 @@ interface CatalogHeaderProps {
   onEditOrder: () => void;
   isEditingOrder: boolean;
   onOpenCatalogs: () => void;
+  onExportCards: () => void;
 }
 
 export function CatalogHeader({
@@ -31,6 +32,7 @@ export function CatalogHeader({
   onEditOrder,
   isEditingOrder,
   onOpenCatalogs,
+  onExportCards,
 }: CatalogHeaderProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(title);
@@ -104,6 +106,10 @@ export function CatalogHeader({
           <Button variant="outline" onClick={onOpenCatalogs}>
             <FolderOpen className="mr-2 h-4 w-4" />
             Meus Catálogos
+          </Button>
+          <Button variant="outline" onClick={onExportCards}>
+            <CreditCard className="mr-2 h-4 w-4" />
+            Card
           </Button>
           <Button variant="outline" onClick={onSaveProject} disabled={isSaving}>
             <Save className="mr-2 h-4 w-4" />
