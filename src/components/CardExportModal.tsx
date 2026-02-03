@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { Product } from '@/types/product';
-import { Image, Loader2, Download, ChevronRight, Check } from 'lucide-react';
-import { downloadProductCard } from '@/utils/generateCard';
+import { Image, Loader2 } from 'lucide-react';
+import { generateProductCard } from '@/utils/generateCard';
 
 interface Catalog {
   id: string;
@@ -32,16 +32,12 @@ export function CardExportModal({
   catalogs,
   currentCatalogId,
 }: CardExportModalProps) {
-  const [step, setStep] = useState<'catalogs' | 'products' | 'exporting'>('catalogs');
+  const [step, setStep] = useState<'catalogs' | 'products'>('catalogs');
   const [selectedCatalogIds, setSelectedCatalogIds] = useState<string[]>([]);
   const [catalogProducts, setCatalogProducts] = useState<CatalogProducts[]>([]);
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  
-  // Export state
-  const [productsToExport, setProductsToExport] = useState<Product[]>([]);
-  const [currentExportIndex, setCurrentExportIndex] = useState(0);
-  const [isDownloading, setIsDownloading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Reset state when modal opens
   useEffect(() => {
@@ -50,8 +46,6 @@ export function CardExportModal({
       setSelectedCatalogIds(currentCatalogId ? [currentCatalogId] : []);
       setCatalogProducts([]);
       setSelectedProductIds([]);
-      setProductsToExport([]);
-      setCurrentExportIndex(0);
     }
   }, [open, currentCatalogId]);
 
@@ -138,45 +132,36 @@ export function CardExportModal({
     }
   };
 
-  const handleStartExport = () => {
-    // Gather selected products in order
-    const selectedProducts: Product[] = [];
-    for (const catalog of catalogProducts) {
-      for (const product of catalog.products) {
-        if (selectedProductIds.includes(product.id)) {
-          selectedProducts.push(product);
+  const handleExportCards = async () => {
+    if (selectedProductIds.length === 0) return;
+
+    setIsExporting(true);
+    try {
+      // Get all selected products
+      const selectedProducts: Product[] = [];
+      for (const catalog of catalogProducts) {
+        for (const product of catalog.products) {
+          if (selectedProductIds.includes(product.id)) {
+            selectedProducts.push(product);
+          }
         }
       }
-    }
-    
-    setProductsToExport(selectedProducts);
-    setCurrentExportIndex(0);
-    setStep('exporting');
-  };
 
-  const handleDownloadCurrent = async () => {
-    if (currentExportIndex >= productsToExport.length) return;
-    
-    setIsDownloading(true);
-    try {
-      const product = productsToExport[currentExportIndex];
-      await downloadProductCard(product);
-      
-      // Move to next product after download
-      if (currentExportIndex < productsToExport.length - 1) {
-        setCurrentExportIndex(currentExportIndex + 1);
-      } else {
-        // All done - close modal
-        onOpenChange(false);
+      // Generate and download each card
+      for (const product of selectedProducts) {
+        await generateProductCard(product);
+        // Small delay between downloads to prevent browser blocking
+        await new Promise((resolve) => setTimeout(resolve, 300));
       }
+
+      onOpenChange(false);
     } catch (error) {
-      console.error('Erro ao baixar card:', error);
+      console.error('Erro ao exportar cards:', error);
     } finally {
-      setIsDownloading(false);
+      setIsExporting(false);
     }
   };
 
-  const currentProduct = productsToExport[currentExportIndex];
   const totalProducts = catalogProducts.reduce((sum, c) => sum + c.products.length, 0);
 
   return (
@@ -185,20 +170,17 @@ export function CardExportModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Image className="h-5 w-5" />
-            {step === 'catalogs' && 'Selecionar Catálogos'}
-            {step === 'products' && 'Selecionar Produtos'}
-            {step === 'exporting' && `Baixar Card ${currentExportIndex + 1} de ${productsToExport.length}`}
+            {step === 'catalogs' ? 'Selecionar Catálogos' : 'Selecionar Produtos'}
           </DialogTitle>
-          <DialogDescription>
-            {step === 'catalogs' && 'Escolha os catálogos para exportar cards'}
-            {step === 'products' && 'Escolha os produtos para exportar como cards'}
-            {step === 'exporting' && 'Clique em Baixar para salvar cada card'}
-          </DialogDescription>
         </DialogHeader>
 
-        {step === 'catalogs' && (
+        {step === 'catalogs' ? (
           <>
             <div className="py-4">
+              <p className="mb-4 text-sm text-muted-foreground">
+                Selecione os catálogos dos quais deseja exportar cards de produtos:
+              </p>
+
               <div className="mb-3 flex items-center gap-2">
                 <Checkbox
                   id="select-all-catalogs"
@@ -245,19 +227,18 @@ export function CardExportModal({
                     Carregando...
                   </>
                 ) : (
-                  <>
-                    Próximo
-                    <ChevronRight className="ml-2 h-4 w-4" />
-                  </>
+                  'Próximo'
                 )}
               </Button>
             </DialogFooter>
           </>
-        )}
-
-        {step === 'products' && (
+        ) : (
           <>
             <div className="py-4">
+              <p className="mb-4 text-sm text-muted-foreground">
+                Selecione os produtos que deseja exportar como cards:
+              </p>
+
               <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Checkbox
@@ -317,85 +298,18 @@ export function CardExportModal({
                 Voltar
               </Button>
               <Button
-                onClick={handleStartExport}
-                disabled={selectedProductIds.length === 0}
+                onClick={handleExportCards}
+                disabled={selectedProductIds.length === 0 || isExporting}
               >
-                <Image className="mr-2 h-4 w-4" />
-                Iniciar Exportação ({selectedProductIds.length})
-              </Button>
-            </DialogFooter>
-          </>
-        )}
-
-        {step === 'exporting' && currentProduct && (
-          <>
-            <div className="py-4">
-              {/* Preview card */}
-              <div className="mx-auto mb-4 w-full max-w-[280px] overflow-hidden rounded-lg border bg-card shadow-md">
-                {currentProduct.image ? (
-                  <img
-                    src={currentProduct.image}
-                    alt={currentProduct.name}
-                    className="h-40 w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-40 items-center justify-center bg-muted">
-                    <Image className="h-12 w-12 text-muted-foreground" />
-                  </div>
-                )}
-                <div className="p-3">
-                  <h3 className="font-semibold text-foreground line-clamp-2">{currentProduct.name}</h3>
-                  {currentProduct.description && (
-                    <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
-                      {currentProduct.description}
-                    </p>
-                  )}
-                  <p className="mt-2 text-lg font-bold text-primary">
-                    R$ {currentProduct.price.toFixed(2).replace('.', ',')}
-                  </p>
-                </div>
-              </div>
-
-              {/* Progress indicator */}
-              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                {Array.from({ length: productsToExport.length }, (_, i) => (
-                  <div
-                    key={i}
-                    className={`h-2 w-2 rounded-full ${
-                      i < currentExportIndex
-                        ? 'bg-primary'
-                        : i === currentExportIndex
-                        ? 'bg-primary animate-pulse'
-                        : 'bg-muted-foreground/30'
-                    }`}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <DialogFooter className="flex-col gap-2 sm:flex-row">
-              <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleDownloadCurrent}
-                disabled={isDownloading}
-                className="w-full sm:w-auto"
-              >
-                {isDownloading ? (
+                {isExporting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Gerando...
-                  </>
-                ) : currentExportIndex < productsToExport.length - 1 ? (
-                  <>
-                    <Download className="mr-2 h-4 w-4" />
-                    Baixar e Próximo
+                    Exportando...
                   </>
                 ) : (
                   <>
-                    <Check className="mr-2 h-4 w-4" />
-                    Baixar e Finalizar
+                    <Image className="mr-2 h-4 w-4" />
+                    Exportar {selectedProductIds.length} Card(s)
                   </>
                 )}
               </Button>
