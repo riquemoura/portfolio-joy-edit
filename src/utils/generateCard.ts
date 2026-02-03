@@ -3,9 +3,16 @@ import { Product } from '@/types/product';
 
 // Download a single product card as PNG
 export async function downloadProductCard(product: Product): Promise<boolean> {
+  console.log('[Card Export] Iniciando geração do card para:', product.name);
+  
   // Create the card canvas
   const canvas = await createCardCanvas(product);
-  if (!canvas) return false;
+  if (!canvas) {
+    console.error('[Card Export] Falha ao criar canvas');
+    return false;
+  }
+  
+  console.log('[Card Export] Canvas criado com sucesso, dimensões:', canvas.width, 'x', canvas.height);
 
   // Get clean filename
   const cleanName = product.name
@@ -13,30 +20,41 @@ export async function downloadProductCard(product: Product): Promise<boolean> {
     .replace(/\s+/g, '_')
     .toLowerCase();
   const fileName = `card_${cleanName}.png`;
+  
+  console.log('[Card Export] Gerando blob para download:', fileName);
 
   // Download the file
   return new Promise((resolve) => {
     canvas.toBlob((blob) => {
       if (!blob) {
+        console.error('[Card Export] Falha ao gerar blob');
         resolve(false);
         return;
       }
+      
+      console.log('[Card Export] Blob criado, tamanho:', blob.size, 'bytes');
 
       const url = URL.createObjectURL(blob);
+      console.log('[Card Export] URL criada:', url);
+      
       const link = document.createElement('a');
       link.href = url;
       link.download = fileName;
+      link.style.display = 'none';
       
       // Trigger download
       document.body.appendChild(link);
+      console.log('[Card Export] Link adicionado ao DOM, disparando click...');
       link.click();
+      console.log('[Card Export] Click disparado');
       document.body.removeChild(link);
 
       // Cleanup after a short delay
       setTimeout(() => {
         URL.revokeObjectURL(url);
+        console.log('[Card Export] Download concluído para:', fileName);
         resolve(true);
-      }, 300);
+      }, 500);
     }, 'image/png');
   });
 }
