@@ -1,84 +1,8 @@
 import html2canvas from 'html2canvas';
 import { Product } from '@/types/product';
 
-// Queue system for sequential card generation with save dialog
-class CardExportQueue {
-  private queue: Product[] = [];
-  private isProcessing = false;
-  private onProgress?: (current: number, total: number, productName: string) => void;
-  private onComplete?: () => void;
-  private onError?: (error: string) => void;
-  private total = 0;
-  private current = 0;
-
-  setCallbacks(
-    onProgress?: (current: number, total: number, productName: string) => void,
-    onComplete?: () => void,
-    onError?: (error: string) => void
-  ) {
-    this.onProgress = onProgress;
-    this.onComplete = onComplete;
-    this.onError = onError;
-  }
-
-  async addToQueue(products: Product[]): Promise<void> {
-    this.queue = [...products];
-    this.total = products.length;
-    this.current = 0;
-
-    if (!this.isProcessing) {
-      await this.processQueue();
-    }
-  }
-
-  private async processQueue(): Promise<void> {
-    if (this.queue.length === 0) {
-      this.isProcessing = false;
-      this.onComplete?.();
-      return;
-    }
-
-    this.isProcessing = true;
-    const product = this.queue.shift()!;
-    this.current++;
-
-    this.onProgress?.(this.current, this.total, product.name);
-
-    try {
-      const success = await generateSingleCardWithSaveDialog(product);
-      if (!success) {
-        // User cancelled - stop the queue
-        this.queue = [];
-        this.isProcessing = false;
-        this.onComplete?.();
-        return;
-      }
-    } catch (error) {
-      console.error(`Erro ao gerar card para ${product.name}:`, error);
-      this.onError?.(`Erro ao exportar ${product.name}`);
-    }
-
-    // Process next item
-    await this.processQueue();
-  }
-}
-
-// Singleton instance
-export const cardExportQueue = new CardExportQueue();
-
-// Export multiple cards with queue
-export async function exportMultipleCards(
-  products: Product[],
-  onProgress?: (current: number, total: number, productName: string) => void,
-  onComplete?: () => void,
-  onError?: (error: string) => void
-): Promise<void> {
-  cardExportQueue.setCallbacks(onProgress, onComplete, onError);
-  await cardExportQueue.addToQueue(products);
-}
-
-// Generate a single card with native save dialog
-async function generateSingleCardWithSaveDialog(product: Product): Promise<boolean> {
+// Download a single product card as PNG
+export async function downloadProductCard(product: Product): Promise<boolean> {
   // Create the card canvas
   const canvas = await createCardCanvas(product);
   if (!canvas) return false;
@@ -90,47 +14,7 @@ async function generateSingleCardWithSaveDialog(product: Product): Promise<boole
     .toLowerCase();
   const fileName = `card_${cleanName}.png`;
 
-  // Try using File System Access API (modern browsers - opens native save dialog)
-  if ('showSaveFilePicker' in window) {
-    try {
-      const handle = await (window as any).showSaveFilePicker({
-        suggestedName: fileName,
-        types: [
-          {
-            description: 'Imagem PNG',
-            accept: { 'image/png': ['.png'] },
-          },
-        ],
-      });
-
-      const writable = await handle.createWritable();
-      const blob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob((b) => resolve(b), 'image/png');
-      });
-
-      if (blob) {
-        await writable.write(blob);
-        await writable.close();
-        return true;
-      }
-      return false;
-    } catch (error: any) {
-      // User cancelled the save dialog
-      if (error.name === 'AbortError') {
-        return false;
-      }
-      console.error('Erro ao salvar arquivo:', error);
-      // Fall back to traditional download
-      return await fallbackDownload(canvas, fileName);
-    }
-  } else {
-    // Fallback for browsers that don't support File System Access API
-    return await fallbackDownload(canvas, fileName);
-  }
-}
-
-// Fallback download method for older browsers
-async function fallbackDownload(canvas: HTMLCanvasElement, fileName: string): Promise<boolean> {
+  // Download the file
   return new Promise((resolve) => {
     canvas.toBlob((blob) => {
       if (!blob) {
@@ -148,11 +32,11 @@ async function fallbackDownload(canvas: HTMLCanvasElement, fileName: string): Pr
       link.click();
       document.body.removeChild(link);
 
-      // Wait and cleanup
+      // Cleanup after a short delay
       setTimeout(() => {
         URL.revokeObjectURL(url);
         resolve(true);
-      }, 500);
+      }, 300);
     }, 'image/png');
   });
 }
@@ -273,5 +157,5 @@ async function createCardCanvas(product: Product): Promise<HTMLCanvasElement | n
 
 // Keep backward compatibility
 export async function generateProductCard(product: Product): Promise<void> {
-  await generateSingleCardWithSaveDialog(product);
+  await downloadProductCard(product);
 }
