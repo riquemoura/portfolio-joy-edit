@@ -123,6 +123,76 @@ export function useCatalogs() {
     }
   }, [currentCatalog, catalogs]);
 
+  const duplicateCatalog = useCallback(async (id: string): Promise<Catalog | null> => {
+    try {
+      // 1. Busca o catálogo original
+      const originalCatalog = catalogs.find((c) => c.id === id);
+      if (!originalCatalog) {
+        console.error('Catálogo não encontrado');
+        return null;
+      }
+
+      // 2. Cria o novo catálogo com nome "Cópia de X"
+      const { data: newCatalogData, error: catalogError } = await supabase
+        .from('catalogs')
+        .insert({
+          name: `Cópia de ${originalCatalog.name}`,
+          background_image: originalCatalog.backgroundImage,
+        })
+        .select()
+        .single();
+
+      if (catalogError) throw catalogError;
+
+      const newCatalog: Catalog = {
+        id: newCatalogData.id,
+        name: newCatalogData.name,
+        backgroundImage: newCatalogData.background_image,
+        createdAt: newCatalogData.created_at,
+        updatedAt: newCatalogData.updated_at,
+      };
+
+      // 3. Busca todos os produtos do catálogo original (ordenados por position)
+      const { data: originalProducts, error: productsError } = await supabase
+        .from('products')
+        .select('*')
+        .eq('catalog_id', id)
+        .order('position', { ascending: true });
+
+      if (productsError) throw productsError;
+
+      // 4. Copia os produtos para o novo catálogo (se houver)
+      if (originalProducts && originalProducts.length > 0) {
+        const productsToInsert = originalProducts.map((p, index) => ({
+          catalog_id: newCatalog.id,
+          name: p.name,
+          description: p.description,
+          price: p.price,
+          image_url: p.image_url,
+          position: index, // Mantém a ordem original
+        }));
+
+        const { error: insertError } = await supabase
+          .from('products')
+          .insert(productsToInsert);
+
+        if (insertError) {
+          // Se falhar ao copiar produtos, deleta o catálogo criado
+          await supabase.from('catalogs').delete().eq('id', newCatalog.id);
+          throw insertError;
+        }
+      }
+
+      // 5. Atualiza o estado local
+      setCatalogs((prev) => [...prev, newCatalog]);
+
+      return newCatalog;
+    } catch (error) {
+      console.error('Erro ao duplicar catálogo:', error);
+      return null;
+    }
+  }, [catalogs]);
+
   const selectCatalog = useCallback((catalog: Catalog) => {
     setCurrentCatalog(catalog);
   }, []);
@@ -135,6 +205,7 @@ export function useCatalogs() {
     createCatalog,
     updateCatalog,
     deleteCatalog,
+    duplicateCatalog,
     selectCatalog,
   };
 }

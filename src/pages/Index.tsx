@@ -22,6 +22,7 @@ const Index = () => {
     createCatalog,
     updateCatalog,
     deleteCatalog,
+    duplicateCatalog,
     selectCatalog,
   } = useCatalogs();
 
@@ -184,6 +185,23 @@ const Index = () => {
     return updateCatalog(id, { name });
   };
 
+  const handleDuplicateCatalog = async (id: string) => {
+    const newCatalog = await duplicateCatalog(id);
+    if (newCatalog) {
+      toast({
+        title: 'Catálogo duplicado!',
+        description: `O catálogo "${newCatalog.name}" foi criado com todos os produtos.`,
+      });
+    } else {
+      toast({
+        title: 'Erro ao duplicar',
+        description: 'Não foi possível duplicar o catálogo. Tente novamente.',
+        variant: 'destructive',
+      });
+    }
+    return newCatalog;
+  };
+
   return (
     <div
       className="min-h-screen bg-background"
@@ -268,6 +286,7 @@ const Index = () => {
         onCreate={createCatalog}
         onDelete={deleteCatalog}
         onRename={handleRenameCatalog}
+        onDuplicate={handleDuplicateCatalog}
       />
 
       <PDFGeneratorModal
