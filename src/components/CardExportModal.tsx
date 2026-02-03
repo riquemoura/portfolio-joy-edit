@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { Product } from '@/types/product';
 import { Image, Loader2, Download } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 import { generateProductCardBlob } from '@/utils/generateCard';
 import JSZip from 'jszip';
 
@@ -39,6 +40,7 @@ export function CardExportModal({
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState({ current: 0, total: 0 });
 
   // Reset state when modal opens
   useEffect(() => {
@@ -47,6 +49,7 @@ export function CardExportModal({
       setSelectedCatalogIds(currentCatalogId ? [currentCatalogId] : []);
       setCatalogProducts([]);
       setSelectedProductIds([]);
+      setExportProgress({ current: 0, total: 0 });
     }
   }, [open, currentCatalogId]);
 
@@ -137,6 +140,7 @@ export function CardExportModal({
     if (selectedProductIds.length === 0) return;
 
     setIsExporting(true);
+    setExportProgress({ current: 0, total: selectedProductIds.length });
     try {
       // Get all selected products
       const selectedProducts: Product[] = [];
@@ -152,11 +156,13 @@ export function CardExportModal({
       const zip = new JSZip();
 
       // Generate all cards and add to ZIP
-      for (const product of selectedProducts) {
+      for (let i = 0; i < selectedProducts.length; i++) {
+        const product = selectedProducts[i];
         const result = await generateProductCardBlob(product);
         if (result) {
           zip.file(result.filename, result.blob);
         }
+        setExportProgress({ current: i + 1, total: selectedProducts.length });
       }
 
       // Generate and download ZIP
@@ -307,26 +313,40 @@ export function CardExportModal({
               </ScrollArea>
             </div>
 
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setStep('catalogs')}>
-                Voltar
-              </Button>
-              <Button
-                onClick={handleExportCards}
-                disabled={selectedProductIds.length === 0 || isExporting}
-              >
-                {isExporting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Gerando ZIP...
-                  </>
-                ) : (
-                  <>
-                    <Download className="mr-2 h-4 w-4" />
-                    Exportar {selectedProductIds.length} Card(s)
-                  </>
-                )}
-              </Button>
+            <DialogFooter className="flex-col gap-3 sm:flex-col">
+              {isExporting && (
+                <div className="w-full space-y-2">
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <span>Gerando cards...</span>
+                    <span>{exportProgress.current} de {exportProgress.total}</span>
+                  </div>
+                  <Progress 
+                    value={(exportProgress.current / exportProgress.total) * 100} 
+                    className="h-2"
+                  />
+                </div>
+              )}
+              <div className="flex w-full gap-2 sm:justify-end">
+                <Button variant="outline" onClick={() => setStep('catalogs')} disabled={isExporting}>
+                  Voltar
+                </Button>
+                <Button
+                  onClick={handleExportCards}
+                  disabled={selectedProductIds.length === 0 || isExporting}
+                >
+                  {isExporting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Gerando ZIP...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="mr-2 h-4 w-4" />
+                      Exportar {selectedProductIds.length} Card(s)
+                    </>
+                  )}
+                </Button>
+              </div>
             </DialogFooter>
           </>
         )}
