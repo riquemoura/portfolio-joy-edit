@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { FolderOpen, Plus, Trash2, Check, Pencil, X } from 'lucide-react';
+import { FolderOpen, Plus, Trash2, Check, Pencil, X, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface CatalogSelectorProps {
@@ -21,6 +21,7 @@ interface CatalogSelectorProps {
   onCreate: (name: string) => Promise<Catalog | null>;
   onDelete: (id: string) => Promise<boolean>;
   onRename: (id: string, name: string) => Promise<boolean>;
+  onDuplicate: (id: string) => Promise<Catalog | null>;
 }
 
 export function CatalogSelector({
@@ -32,9 +33,11 @@ export function CatalogSelector({
   onCreate,
   onDelete,
   onRename,
+  onDuplicate,
 }: CatalogSelectorProps) {
   const [newCatalogName, setNewCatalogName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
 
@@ -79,6 +82,20 @@ export function CatalogSelector({
     e.stopPropagation();
     setEditingId(null);
     setEditingName('');
+  };
+
+  const handleDuplicate = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsDuplicating(id);
+    try {
+      const newCatalog = await onDuplicate(id);
+      if (newCatalog) {
+        onSelect(newCatalog);
+        onOpenChange(false);
+      }
+    } finally {
+      setIsDuplicating(null);
+    }
   };
 
   return (
@@ -134,6 +151,16 @@ export function CatalogSelector({
                     <span className="font-medium">{catalog.name}</span>
                   </div>
                   <div className="flex items-center gap-1">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      onClick={(e) => handleDuplicate(catalog.id, e)}
+                      disabled={isDuplicating === catalog.id}
+                      title="Duplicar catálogo"
+                    >
+                      <Copy className={cn("h-4 w-4", isDuplicating === catalog.id && "animate-pulse")} />
+                    </Button>
                     <Button
                       size="icon"
                       variant="ghost"
