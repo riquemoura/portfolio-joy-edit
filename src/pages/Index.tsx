@@ -5,6 +5,7 @@ import { Product } from '@/types/product';
 import { CatalogHeader } from '@/components/CatalogHeader';
 import { ProductCard } from '@/components/ProductCard';
 import { ProductCardReorder } from '@/components/ProductCardReorder';
+import { PageBreakCard } from '@/components/PageBreakCard';
 import { ProductForm } from '@/components/ProductForm';
 import { BackgroundModal } from '@/components/BackgroundModal';
 import { CatalogSelector } from '@/components/CatalogSelector';
@@ -26,7 +27,7 @@ const Index = () => {
     selectCatalog,
   } = useCatalogs();
 
-  const { products, addProduct, updateProduct, removeProduct, saveProducts, loadProducts, isSaving, isLoading, reorderProducts, moveProductTo } = useProducts(currentCatalog?.id ?? null);
+  const { products, addProduct, addPageBreak, updateProduct, removeProduct, saveProducts, loadProducts, isSaving, isLoading, reorderProducts, moveProductTo } = useProducts(currentCatalog?.id ?? null);
   
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
   const [isProductFormOpen, setIsProductFormOpen] = useState(false);
@@ -148,6 +149,7 @@ const Index = () => {
             description: p.description || '',
             price: Number(p.price),
             image: p.image_url || '',
+            isPageBreak: (p as any).is_page_break || false,
           }));
 
           await generateCatalogPDF(productsForPDF, catalog.name, catalog.backgroundImage);
@@ -225,6 +227,7 @@ const Index = () => {
         onSaveProject={handleSaveProject}
         isSaving={isSaving}
         onAddProduct={() => setIsProductFormOpen(true)}
+        onAddPageBreak={addPageBreak}
         onEditOrder={() => setIsEditingOrder(!isEditingOrder)}
         isEditingOrder={isEditingOrder}
         onOpenCatalogs={() => setIsCatalogSelectorOpen(true)}
@@ -233,7 +236,12 @@ const Index = () => {
       <main className="container mx-auto px-3 py-4 sm:px-4 sm:py-8">
         <div className="mb-4 flex items-center justify-between">
           <p className="text-sm text-muted-foreground sm:text-base">
-            {products.length} produto{products.length !== 1 ? 's' : ''} no catálogo
+            {products.filter(p => !p.isPageBreak).length} produto{products.filter(p => !p.isPageBreak).length !== 1 ? 's' : ''} no catálogo
+            {products.filter(p => p.isPageBreak).length > 0 && (
+              <span className="ml-2 text-amber-600">
+                ({products.filter(p => p.isPageBreak).length} quebra{products.filter(p => p.isPageBreak).length !== 1 ? 's' : ''} de página)
+              </span>
+            )}
             {isEditingOrder && <span className="ml-2 text-primary">(Arraste para reordenar)</span>}
           </p>
         </div>
@@ -242,22 +250,36 @@ const Index = () => {
         <div className="grid grid-cols-2 gap-3 sm:gap-4 md:gap-6 lg:grid-cols-3 xl:grid-cols-4">
           {products.map((product, index) => (
             isEditingOrder ? (
-              <ProductCardReorder
-                key={product.id}
-                product={product}
-                index={index}
-                totalProducts={products.length}
-                onMoveUp={() => reorderProducts(index, index - 1)}
-                onMoveDown={() => reorderProducts(index, index + 1)}
-                onMoveTo={(newIndex) => moveProductTo(index, newIndex)}
-              />
+              product.isPageBreak ? (
+                <PageBreakCard
+                  key={product.id}
+                  index={index}
+                  totalProducts={products.length}
+                  onMoveUp={() => reorderProducts(index, index - 1)}
+                  onMoveDown={() => reorderProducts(index, index + 1)}
+                  onMoveTo={(newIndex) => moveProductTo(index, newIndex)}
+                  onRemove={() => removeProduct(product.id)}
+                />
+              ) : (
+                <ProductCardReorder
+                  key={product.id}
+                  product={product}
+                  index={index}
+                  totalProducts={products.length}
+                  onMoveUp={() => reorderProducts(index, index - 1)}
+                  onMoveDown={() => reorderProducts(index, index + 1)}
+                  onMoveTo={(newIndex) => moveProductTo(index, newIndex)}
+                />
+              )
             ) : (
-              <ProductCard
-                key={product.id}
-                product={product}
-                onEdit={handleEditProduct}
-                onRemove={removeProduct}
-              />
+              !product.isPageBreak && (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  onEdit={handleEditProduct}
+                  onRemove={removeProduct}
+                />
+              )
             )
           ))}
         </div>

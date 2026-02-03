@@ -86,10 +86,40 @@ export async function generateCatalogPDF(
     );
   };
 
-  // Organiza produtos em páginas de 4 produtos cada
+  // Organiza produtos em páginas de 4 produtos cada, respeitando quebras de página
   const pages: Product[][] = [];
-  for (let i = 0; i < products.length; i += productsPerPage) {
-    pages.push(products.slice(i, i + productsPerPage));
+  let currentPage: Product[] = [];
+  
+  for (const product of products) {
+    // Se encontrar uma quebra de página
+    if (product.isPageBreak) {
+      // Se há produtos na página atual, fecha ela
+      if (currentPage.length > 0) {
+        pages.push(currentPage);
+        currentPage = [];
+      }
+      // Inicia nova página (a quebra força uma nova página mesmo vazia)
+      continue;
+    }
+    
+    // Adiciona produto à página atual
+    currentPage.push(product);
+    
+    // Se atingiu 4 produtos, fecha a página
+    if (currentPage.length === productsPerPage) {
+      pages.push(currentPage);
+      currentPage = [];
+    }
+  }
+  
+  // Adiciona última página se houver produtos restantes
+  if (currentPage.length > 0) {
+    pages.push(currentPage);
+  }
+  
+  // Se não houver produtos, retorna sem gerar PDF
+  if (pages.length === 0) {
+    return;
   }
 
   for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {

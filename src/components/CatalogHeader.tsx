@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ImageIcon, FileText, Pencil, Check, Save, Plus, ArrowUpDown, FolderOpen } from 'lucide-react';
+import { ImageIcon, FileText, Pencil, Check, Save, Plus, ArrowUpDown, FolderOpen, SeparatorHorizontal } from 'lucide-react';
 
 interface CatalogHeaderProps {
   title: string;
@@ -12,6 +12,7 @@ interface CatalogHeaderProps {
   onSaveProject: () => void;
   isSaving: boolean;
   onAddProduct: () => void;
+  onAddPageBreak: () => void;
   onEditOrder: () => void;
   isEditingOrder: boolean;
   onOpenCatalogs: () => void;
@@ -26,6 +27,7 @@ export function CatalogHeader({
   onSaveProject,
   isSaving,
   onAddProduct,
+  onAddPageBreak,
   onEditOrder,
   isEditingOrder,
   onOpenCatalogs,
@@ -85,6 +87,12 @@ export function CatalogHeader({
             <Plus className="mr-2 h-4 w-4" />
             Adicionar Produto
           </Button>
+          {isEditingOrder && (
+            <Button variant="outline" onClick={onAddPageBreak} className="border-amber-500/50 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30">
+              <SeparatorHorizontal className="mr-2 h-4 w-4" />
+              Quebra de Página
+            </Button>
+          )}
           <Button variant="outline" onClick={onEditOrder}>
             <ArrowUpDown className="mr-2 h-4 w-4" />
             {isEditingOrder ? 'Concluir Ordem' : 'Editar Ordem'}
