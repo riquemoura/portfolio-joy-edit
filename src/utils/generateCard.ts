@@ -1,7 +1,7 @@
 import html2canvas from 'html2canvas';
 import { Product } from '@/types/product';
 
-export async function generateProductCard(product: Product): Promise<void> {
+export async function generateProductCardBlob(product: Product): Promise<{ blob: Blob; filename: string } | null> {
   // Create a container div for the card
   const container = document.createElement('div');
   container.style.position = 'fixed';
@@ -104,24 +104,39 @@ export async function generateProductCard(product: Product): Promise<void> {
       backgroundColor: '#ffffff',
     });
 
-    // Convert to blob and download
-    canvas.toBlob((blob) => {
-      if (!blob) return;
+    // Convert to blob
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          resolve(null);
+          return;
+        }
 
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      // Clean filename - remove special characters
-      const cleanName = product.name
-        .replace(/[^a-zA-Z0-9\s]/g, '')
-        .replace(/\s+/g, '_')
-        .toLowerCase();
-      link.download = `card_${cleanName}.png`;
-      link.click();
-      URL.revokeObjectURL(url);
-    }, 'image/png');
+        // Clean filename - remove special characters
+        const cleanName = product.name
+          .replace(/[^a-zA-Z0-9\s]/g, '')
+          .replace(/\s+/g, '_')
+          .toLowerCase();
+        const filename = `card_${cleanName}.png`;
+
+        resolve({ blob, filename });
+      }, 'image/png');
+    });
   } finally {
     // Clean up
     document.body.removeChild(container);
   }
+}
+
+// Legacy function for single card download
+export async function generateProductCard(product: Product): Promise<void> {
+  const result = await generateProductCardBlob(product);
+  if (!result) return;
+
+  const url = URL.createObjectURL(result.blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = result.filename;
+  link.click();
+  URL.revokeObjectURL(url);
 }
