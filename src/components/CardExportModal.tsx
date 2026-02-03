@@ -5,8 +5,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { Product } from '@/types/product';
-import { Image, Loader2 } from 'lucide-react';
-import { generateProductCard } from '@/utils/generateCard';
+import { Image, Loader2, Download } from 'lucide-react';
+import { generateProductCardBlob } from '@/utils/generateCard';
+import JSZip from 'jszip';
 
 interface Catalog {
   id: string;
@@ -147,12 +148,25 @@ export function CardExportModal({
         }
       }
 
-      // Generate and download each card
+      // Create ZIP file
+      const zip = new JSZip();
+
+      // Generate all cards and add to ZIP
       for (const product of selectedProducts) {
-        await generateProductCard(product);
-        // Small delay between downloads to prevent browser blocking
-        await new Promise((resolve) => setTimeout(resolve, 300));
+        const result = await generateProductCardBlob(product);
+        if (result) {
+          zip.file(result.filename, result.blob);
+        }
       }
+
+      // Generate and download ZIP
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(zipBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `cards_${new Date().toISOString().slice(0, 10)}.zip`;
+      link.click();
+      URL.revokeObjectURL(url);
 
       onOpenChange(false);
     } catch (error) {
@@ -304,11 +318,11 @@ export function CardExportModal({
                 {isExporting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Exportando...
+                    Gerando ZIP...
                   </>
                 ) : (
                   <>
-                    <Image className="mr-2 h-4 w-4" />
+                    <Download className="mr-2 h-4 w-4" />
                     Exportar {selectedProductIds.length} Card(s)
                   </>
                 )}
