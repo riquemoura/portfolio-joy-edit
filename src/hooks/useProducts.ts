@@ -52,6 +52,7 @@ export function useProducts(catalogId: string | null) {
           description: p.description,
           price: p.price,
           image_url: p.image,
+          is_page_break: p.isPageBreak || false,
         }));
 
         console.log(`[Save] Tentativa ${attempt}/${maxRetries} - Salvando ${productsToSave.length} produtos...`);
@@ -154,6 +155,7 @@ export function useProducts(catalogId: string | null) {
           description: p.description || '',
           price: Number(p.price),
           image: p.image_url || '',
+          isPageBreak: (p as any).is_page_break || false,
         }));
         setProducts(loadedProducts);
       } else {
@@ -180,8 +182,21 @@ export function useProducts(catalogId: string | null) {
     const newProduct: Product = {
       ...product,
       id: crypto.randomUUID(),
+      isPageBreak: product.isPageBreak || false,
     };
     setProducts((prev) => [...prev, newProduct]);
+  }, []);
+
+  const addPageBreak = useCallback(() => {
+    const pageBreak: Product = {
+      id: crypto.randomUUID(),
+      name: '--- QUEBRA DE PÁGINA ---',
+      description: '',
+      price: 0,
+      image: '',
+      isPageBreak: true,
+    };
+    setProducts((prev) => [...prev, pageBreak]);
   }, []);
 
   const updateProduct = useCallback((id: string, updates: Partial<Omit<Product, 'id'>>) => {
@@ -219,6 +234,7 @@ export function useProducts(catalogId: string | null) {
   return {
     products,
     addProduct,
+    addPageBreak,
     updateProduct,
     removeProduct,
     reorderProducts,

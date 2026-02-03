@@ -45,6 +45,7 @@ export type Database = {
           description: string | null
           id: string
           image_url: string | null
+          is_page_break: boolean
           name: string
           position: number
           price: number
@@ -56,6 +57,7 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          is_page_break?: boolean
           name: string
           position?: number
           price?: number
@@ -67,6 +69,7 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          is_page_break?: boolean
           name?: string
           position?: number
           price?: number
@@ -119,6 +122,45 @@ export type Database = {
         Relationships: []
       }
       products_backup_20260203_reorder: {
+        Row: {
+          backed_up_at: string
+          catalog_id: string
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          name: string
+          position: number
+          price: number
+          updated_at: string
+        }
+        Insert: {
+          backed_up_at?: string
+          catalog_id: string
+          created_at: string
+          description?: string | null
+          id: string
+          image_url?: string | null
+          name: string
+          position?: number
+          price: number
+          updated_at: string
+        }
+        Update: {
+          backed_up_at?: string
+          catalog_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          position?: number
+          price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      products_backup_pagebreak: {
         Row: {
           backed_up_at: string
           catalog_id: string
