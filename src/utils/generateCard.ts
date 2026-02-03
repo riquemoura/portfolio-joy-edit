@@ -1,7 +1,74 @@
 import html2canvas from 'html2canvas';
 import { Product } from '@/types/product';
 
-export async function generateProductCard(product: Product): Promise<void> {
+// Queue system for sequential card generation
+class CardExportQueue {
+  private queue: Product[] = [];
+  private isProcessing = false;
+  private onProgress?: (current: number, total: number, productName: string) => void;
+  private onComplete?: () => void;
+  private total = 0;
+  private current = 0;
+
+  setCallbacks(
+    onProgress?: (current: number, total: number, productName: string) => void,
+    onComplete?: () => void
+  ) {
+    this.onProgress = onProgress;
+    this.onComplete = onComplete;
+  }
+
+  async addToQueue(products: Product[]): Promise<void> {
+    this.queue = [...products];
+    this.total = products.length;
+    this.current = 0;
+
+    if (!this.isProcessing) {
+      await this.processQueue();
+    }
+  }
+
+  private async processQueue(): Promise<void> {
+    if (this.queue.length === 0) {
+      this.isProcessing = false;
+      this.onComplete?.();
+      return;
+    }
+
+    this.isProcessing = true;
+    const product = this.queue.shift()!;
+    this.current++;
+
+    this.onProgress?.(this.current, this.total, product.name);
+
+    try {
+      await generateSingleCard(product);
+      // Wait 500ms between downloads to prevent browser blocking
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    } catch (error) {
+      console.error(`Erro ao gerar card para ${product.name}:`, error);
+    }
+
+    // Process next item
+    await this.processQueue();
+  }
+}
+
+// Singleton instance
+export const cardExportQueue = new CardExportQueue();
+
+// Export multiple cards with queue
+export async function exportMultipleCards(
+  products: Product[],
+  onProgress?: (current: number, total: number, productName: string) => void,
+  onComplete?: () => void
+): Promise<void> {
+  cardExportQueue.setCallbacks(onProgress, onComplete);
+  await cardExportQueue.addToQueue(products);
+}
+
+// Generate a single card (internal function)
+async function generateSingleCard(product: Product): Promise<void> {
   // Create a container div for the card
   const container = document.createElement('div');
   container.style.position = 'fixed';
@@ -105,23 +172,38 @@ export async function generateProductCard(product: Product): Promise<void> {
     });
 
     // Convert to blob and download
-    canvas.toBlob((blob) => {
-      if (!blob) return;
+    await new Promise<void>((resolve) => {
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          resolve();
+          return;
+        }
 
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      // Clean filename - remove special characters
-      const cleanName = product.name
-        .replace(/[^a-zA-Z0-9\s]/g, '')
-        .replace(/\s+/g, '_')
-        .toLowerCase();
-      link.download = `card_${cleanName}.png`;
-      link.click();
-      URL.revokeObjectURL(url);
-    }, 'image/png');
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        // Clean filename - remove special characters
+        const cleanName = product.name
+          .replace(/[^a-zA-Z0-9\s]/g, '')
+          .replace(/\s+/g, '_')
+          .toLowerCase();
+        link.download = `card_${cleanName}.png`;
+        link.click();
+        
+        // Wait a bit before revoking URL
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+          resolve();
+        }, 100);
+      }, 'image/png');
+    });
   } finally {
     // Clean up
     document.body.removeChild(container);
   }
+}
+
+// Keep backward compatibility
+export async function generateProductCard(product: Product): Promise<void> {
+  await generateSingleCard(product);
 }
