@@ -18,29 +18,41 @@ export async function generateProductCard(product: Product): Promise<void> {
   card.style.boxShadow = '0 10px 40px rgba(0,0,0,0.15)';
   card.style.fontFamily = 'system-ui, -apple-system, sans-serif';
 
-  // Image section
+  // Image section - maintain original proportions with white padding
   const imageContainer = document.createElement('div');
   imageContainer.style.width = '100%';
-  imageContainer.style.height = '300px';
-  imageContainer.style.backgroundColor = '#f3f4f6';
+  imageContainer.style.backgroundColor = '#ffffff';
   imageContainer.style.display = 'flex';
   imageContainer.style.alignItems = 'center';
   imageContainer.style.justifyContent = 'center';
-  imageContainer.style.overflow = 'hidden';
+  imageContainer.style.padding = '16px';
+  imageContainer.style.boxSizing = 'border-box';
 
   if (product.image) {
     const img = document.createElement('img');
     img.crossOrigin = 'anonymous';
-    img.style.width = '100%';
-    img.style.height = '100%';
-    img.style.objectFit = 'cover';
     
-    // Wait for image to load
+    // Wait for image to load to get natural dimensions
     await new Promise<void>((resolve) => {
       img.onload = () => resolve();
       img.onerror = () => resolve();
       img.src = product.image;
     });
+    
+    // Keep original proportions - max width is container width minus padding
+    const maxWidth = 400 - 32; // 400px card - 16px padding each side
+    const maxHeight = 350;
+    
+    const naturalWidth = img.naturalWidth || maxWidth;
+    const naturalHeight = img.naturalHeight || maxHeight;
+    
+    // Calculate scale to fit within bounds while maintaining aspect ratio
+    const scale = Math.min(maxWidth / naturalWidth, maxHeight / naturalHeight, 1);
+    
+    img.style.width = `${naturalWidth * scale}px`;
+    img.style.height = `${naturalHeight * scale}px`;
+    img.style.objectFit = 'contain';
+    img.style.display = 'block';
     
     imageContainer.appendChild(img);
   } else {
