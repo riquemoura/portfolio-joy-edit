@@ -1,21 +1,24 @@
 import html2canvas from 'html2canvas';
 import { Product } from '@/types/product';
 
-// Queue system for sequential card generation
+// Queue system for sequential card generation with save dialog
 class CardExportQueue {
   private queue: Product[] = [];
   private isProcessing = false;
   private onProgress?: (current: number, total: number, productName: string) => void;
   private onComplete?: () => void;
+  private onError?: (error: string) => void;
   private total = 0;
   private current = 0;
 
   setCallbacks(
     onProgress?: (current: number, total: number, productName: string) => void,
-    onComplete?: () => void
+    onComplete?: () => void,
+    onError?: (error: string) => void
   ) {
     this.onProgress = onProgress;
     this.onComplete = onComplete;
+    this.onError = onError;
   }
 
   async addToQueue(products: Product[]): Promise<void> {
@@ -42,11 +45,17 @@ class CardExportQueue {
     this.onProgress?.(this.current, this.total, product.name);
 
     try {
-      await generateSingleCard(product);
-      // Wait 500ms between downloads to prevent browser blocking
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const success = await generateSingleCardWithSaveDialog(product);
+      if (!success) {
+        // User cancelled - stop the queue
+        this.queue = [];
+        this.isProcessing = false;
+        this.onComplete?.();
+        return;
+      }
     } catch (error) {
       console.error(`Erro ao gerar card para ${product.name}:`, error);
+      this.onError?.(`Erro ao exportar ${product.name}`);
     }
 
     // Process next item
@@ -61,14 +70,95 @@ export const cardExportQueue = new CardExportQueue();
 export async function exportMultipleCards(
   products: Product[],
   onProgress?: (current: number, total: number, productName: string) => void,
-  onComplete?: () => void
+  onComplete?: () => void,
+  onError?: (error: string) => void
 ): Promise<void> {
-  cardExportQueue.setCallbacks(onProgress, onComplete);
+  cardExportQueue.setCallbacks(onProgress, onComplete, onError);
   await cardExportQueue.addToQueue(products);
 }
 
-// Generate a single card (internal function)
-async function generateSingleCard(product: Product): Promise<void> {
+// Generate a single card with native save dialog
+async function generateSingleCardWithSaveDialog(product: Product): Promise<boolean> {
+  // Create the card canvas
+  const canvas = await createCardCanvas(product);
+  if (!canvas) return false;
+
+  // Get clean filename
+  const cleanName = product.name
+    .replace(/[^a-zA-Z0-9\s]/g, '')
+    .replace(/\s+/g, '_')
+    .toLowerCase();
+  const fileName = `card_${cleanName}.png`;
+
+  // Try using File System Access API (modern browsers - opens native save dialog)
+  if ('showSaveFilePicker' in window) {
+    try {
+      const handle = await (window as any).showSaveFilePicker({
+        suggestedName: fileName,
+        types: [
+          {
+            description: 'Imagem PNG',
+            accept: { 'image/png': ['.png'] },
+          },
+        ],
+      });
+
+      const writable = await handle.createWritable();
+      const blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob((b) => resolve(b), 'image/png');
+      });
+
+      if (blob) {
+        await writable.write(blob);
+        await writable.close();
+        return true;
+      }
+      return false;
+    } catch (error: any) {
+      // User cancelled the save dialog
+      if (error.name === 'AbortError') {
+        return false;
+      }
+      console.error('Erro ao salvar arquivo:', error);
+      // Fall back to traditional download
+      return await fallbackDownload(canvas, fileName);
+    }
+  } else {
+    // Fallback for browsers that don't support File System Access API
+    return await fallbackDownload(canvas, fileName);
+  }
+}
+
+// Fallback download method for older browsers
+async function fallbackDownload(canvas: HTMLCanvasElement, fileName: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        resolve(false);
+        return;
+      }
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Wait and cleanup
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+        resolve(true);
+      }, 500);
+    }, 'image/png');
+  });
+}
+
+// Create the card canvas
+async function createCardCanvas(product: Product): Promise<HTMLCanvasElement | null> {
   // Create a container div for the card
   const container = document.createElement('div');
   container.style.position = 'fixed';
@@ -171,32 +261,10 @@ async function generateSingleCard(product: Product): Promise<void> {
       backgroundColor: '#ffffff',
     });
 
-    // Convert to blob and download
-    await new Promise<void>((resolve) => {
-      canvas.toBlob((blob) => {
-        if (!blob) {
-          resolve();
-          return;
-        }
-
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        // Clean filename - remove special characters
-        const cleanName = product.name
-          .replace(/[^a-zA-Z0-9\s]/g, '')
-          .replace(/\s+/g, '_')
-          .toLowerCase();
-        link.download = `card_${cleanName}.png`;
-        link.click();
-        
-        // Wait a bit before revoking URL
-        setTimeout(() => {
-          URL.revokeObjectURL(url);
-          resolve();
-        }, 100);
-      }, 'image/png');
-    });
+    return canvas;
+  } catch (error) {
+    console.error('Erro ao gerar canvas:', error);
+    return null;
   } finally {
     // Clean up
     document.body.removeChild(container);
@@ -205,5 +273,5 @@ async function generateSingleCard(product: Product): Promise<void> {
 
 // Keep backward compatibility
 export async function generateProductCard(product: Product): Promise<void> {
-  await generateSingleCard(product);
+  await generateSingleCardWithSaveDialog(product);
 }
