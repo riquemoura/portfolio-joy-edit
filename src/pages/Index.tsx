@@ -26,7 +26,7 @@ const Index = () => {
     selectCatalog,
   } = useCatalogs();
 
-  const { products, addProduct, updateProduct, removeProduct, saveProducts, loadProducts, isSaving, isLoading, reorderProducts } = useProducts(currentCatalog?.id ?? null);
+  const { products, addProduct, updateProduct, removeProduct, saveProducts, loadProducts, isSaving, isLoading, reorderProducts, moveProductTo } = useProducts(currentCatalog?.id ?? null);
   
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
   const [isProductFormOpen, setIsProductFormOpen] = useState(false);
@@ -249,6 +249,7 @@ const Index = () => {
                 totalProducts={products.length}
                 onMoveUp={() => reorderProducts(index, index - 1)}
                 onMoveDown={() => reorderProducts(index, index + 1)}
+                onMoveTo={(newIndex) => moveProductTo(index, newIndex)}
               />
             ) : (
               <ProductCard
