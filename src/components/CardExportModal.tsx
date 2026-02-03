@@ -3,10 +3,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 import { Product } from '@/types/product';
 import { Image, Loader2 } from 'lucide-react';
-import { generateProductCard } from '@/utils/generateCard';
+import { exportMultipleCards } from '@/utils/generateCard';
 
 interface Catalog {
   id: string;
@@ -38,6 +39,7 @@ export function CardExportModal({
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState({ current: 0, total: 0, productName: '' });
 
   // Reset state when modal opens
   useEffect(() => {
@@ -136,8 +138,10 @@ export function CardExportModal({
     if (selectedProductIds.length === 0) return;
 
     setIsExporting(true);
+    setExportProgress({ current: 0, total: selectedProductIds.length, productName: '' });
+
     try {
-      // Get all selected products
+      // Get all selected products maintaining order
       const selectedProducts: Product[] = [];
       for (const catalog of catalogProducts) {
         for (const product of catalog.products) {
@@ -147,17 +151,20 @@ export function CardExportModal({
         }
       }
 
-      // Generate and download each card
-      for (const product of selectedProducts) {
-        await generateProductCard(product);
-        // Small delay between downloads to prevent browser blocking
-        await new Promise((resolve) => setTimeout(resolve, 300));
-      }
-
-      onOpenChange(false);
+      // Use queue system to export cards one by one
+      await exportMultipleCards(
+        selectedProducts,
+        (current, total, productName) => {
+          setExportProgress({ current, total, productName });
+        },
+        () => {
+          setIsExporting(false);
+          setExportProgress({ current: 0, total: 0, productName: '' });
+          onOpenChange(false);
+        }
+      );
     } catch (error) {
       console.error('Erro ao exportar cards:', error);
-    } finally {
       setIsExporting(false);
     }
   };
@@ -235,66 +242,89 @@ export function CardExportModal({
         ) : (
           <>
             <div className="py-4">
-              <p className="mb-4 text-sm text-muted-foreground">
-                Selecione os produtos que deseja exportar como cards:
-              </p>
-
-              <div className="mb-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="select-all-products"
-                    checked={selectedProductIds.length === totalProducts && totalProducts > 0}
-                    onCheckedChange={handleSelectAllProducts}
+              {isExporting ? (
+                // Progress view during export
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Exportando cards... Por favor, aguarde.
+                  </p>
+                  <Progress 
+                    value={(exportProgress.current / exportProgress.total) * 100} 
+                    className="h-2"
                   />
-                  <label htmlFor="select-all-products" className="text-sm font-medium">
-                    Selecionar todos ({totalProducts})
-                  </label>
+                  <div className="text-center">
+                    <p className="text-lg font-semibold text-foreground">
+                      {exportProgress.current} de {exportProgress.total}
+                    </p>
+                    <p className="text-sm text-muted-foreground truncate">
+                      {exportProgress.productName}
+                    </p>
+                  </div>
                 </div>
-                <span className="text-sm text-muted-foreground">
-                  {selectedProductIds.length} selecionado(s)
-                </span>
-              </div>
+              ) : (
+                <>
+                  <p className="mb-4 text-sm text-muted-foreground">
+                    Selecione os produtos que deseja exportar como cards:
+                  </p>
 
-              <ScrollArea className="h-64 rounded-md border">
-                <div className="p-4">
-                  {catalogProducts.map((catalog) => (
-                    <div key={catalog.catalogId} className="mb-4 last:mb-0">
-                      <h4 className="mb-2 font-medium text-foreground">{catalog.catalogName}</h4>
-                      <div className="space-y-2 pl-2">
-                        {catalog.products.map((product) => (
-                          <div key={product.id} className="flex items-center gap-3">
-                            <Checkbox
-                              id={`product-${product.id}`}
-                              checked={selectedProductIds.includes(product.id)}
-                              onCheckedChange={() => handleProductToggle(product.id)}
-                            />
-                            <label
-                              htmlFor={`product-${product.id}`}
-                              className="flex flex-1 cursor-pointer items-center gap-2 text-sm"
-                            >
-                              {product.image && (
-                                <img
-                                  src={product.image}
-                                  alt={product.name}
-                                  className="h-8 w-8 rounded object-cover"
-                                />
-                              )}
-                              <span className="flex-1 truncate">{product.name}</span>
-                              <span className="text-muted-foreground">
-                                R$ {product.price.toFixed(2)}
-                              </span>
-                            </label>
-                          </div>
-                        ))}
-                      </div>
+                  <div className="mb-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="select-all-products"
+                        checked={selectedProductIds.length === totalProducts && totalProducts > 0}
+                        onCheckedChange={handleSelectAllProducts}
+                      />
+                      <label htmlFor="select-all-products" className="text-sm font-medium">
+                        Selecionar todos ({totalProducts})
+                      </label>
                     </div>
-                  ))}
-                </div>
-              </ScrollArea>
+                    <span className="text-sm text-muted-foreground">
+                      {selectedProductIds.length} selecionado(s)
+                    </span>
+                  </div>
+
+                  <ScrollArea className="h-64 rounded-md border">
+                    <div className="p-4">
+                      {catalogProducts.map((catalog) => (
+                        <div key={catalog.catalogId} className="mb-4 last:mb-0">
+                          <h4 className="mb-2 font-medium text-foreground">{catalog.catalogName}</h4>
+                          <div className="space-y-2 pl-2">
+                            {catalog.products.map((product) => (
+                              <div key={product.id} className="flex items-center gap-3">
+                                <Checkbox
+                                  id={`product-${product.id}`}
+                                  checked={selectedProductIds.includes(product.id)}
+                                  onCheckedChange={() => handleProductToggle(product.id)}
+                                />
+                                <label
+                                  htmlFor={`product-${product.id}`}
+                                  className="flex flex-1 cursor-pointer items-center gap-2 text-sm"
+                                >
+                                  {product.image && (
+                                    <img
+                                      src={product.image}
+                                      alt={product.name}
+                                      className="h-8 w-8 rounded object-cover"
+                                    />
+                                  )}
+                                  <span className="flex-1 truncate">{product.name}</span>
+                                  <span className="text-muted-foreground">
+                                    R$ {product.price.toFixed(2)}
+                                  </span>
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </>
+              )}
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => setStep('catalogs')}>
+              <Button variant="outline" onClick={() => setStep('catalogs')} disabled={isExporting}>
                 Voltar
               </Button>
               <Button
@@ -304,7 +334,7 @@ export function CardExportModal({
                 {isExporting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Exportando...
+                    {exportProgress.current}/{exportProgress.total}
                   </>
                 ) : (
                   <>
