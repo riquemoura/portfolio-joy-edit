@@ -82,12 +82,13 @@ export async function generateProductCardBlob(product: Product): Promise<{ blob:
     card.appendChild(description);
   }
 
-  // Price - matching PDF: helvetica bold, 13pt equivalent, color rgb(120, 90, 60)
+  // Price - matching system UI: font-serif, bold, primary color
   const price = document.createElement('div');
   price.textContent = formatPrice(product.price);
-  price.style.fontSize = '21px';
+  price.style.fontSize = '20px';
   price.style.fontWeight = '700';
-  price.style.color = 'rgb(120, 90, 60)';
+  price.style.fontFamily = "'Playfair Display', Georgia, serif";
+  price.style.color = 'hsl(222.2, 47.4%, 11.2%)'; // --primary color from design system
   card.appendChild(price);
 
   container.appendChild(card);
