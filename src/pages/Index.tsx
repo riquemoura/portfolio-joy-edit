@@ -109,6 +109,7 @@ const Index = () => {
   };
 
   const handleSaveProject = async () => {
+    setIsEditingOrder(false);
     const result = await saveProducts();
     if (result.success) {
       toast({
