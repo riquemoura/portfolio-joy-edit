@@ -160,6 +160,48 @@ export type Database = {
         }
         Relationships: []
       }
+      products_backup_bulk_edit: {
+        Row: {
+          backed_up_at: string | null
+          catalog_id: string | null
+          created_at: string | null
+          description: string | null
+          id: string | null
+          image_url: string | null
+          is_page_break: boolean | null
+          name: string | null
+          position: number | null
+          price: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          backed_up_at?: string | null
+          catalog_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          image_url?: string | null
+          is_page_break?: boolean | null
+          name?: string | null
+          position?: number | null
+          price?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          backed_up_at?: string | null
+          catalog_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          image_url?: string | null
+          is_page_break?: boolean | null
+          name?: string | null
+          position?: number | null
+          price?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       products_backup_cards_feature: {
         Row: {
           backed_up_at: string

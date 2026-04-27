@@ -304,6 +304,31 @@ const Index = () => {
         onSubmit={addProduct}
         editingProduct={editingProduct}
         onUpdate={updateProduct}
+        hasNextProduct={(() => {
+          if (!editingProduct) return false;
+          const editable = products.filter(p => !p.isPageBreak);
+          const idx = editable.findIndex(p => p.id === editingProduct.id);
+          return idx >= 0 && idx < editable.length - 1;
+        })()}
+        currentIndex={(() => {
+          if (!editingProduct) return undefined;
+          const editable = products.filter(p => !p.isPageBreak);
+          const idx = editable.findIndex(p => p.id === editingProduct.id);
+          return idx >= 0 ? idx : undefined;
+        })()}
+        totalCount={products.filter(p => !p.isPageBreak).length}
+        onSaveAndNext={(id, updates) => {
+          updateProduct(id, updates);
+          const editable = products.filter(p => !p.isPageBreak);
+          const idx = editable.findIndex(p => p.id === id);
+          const next = editable[idx + 1];
+          if (next) {
+            setEditingProduct(next);
+          } else {
+            setIsProductFormOpen(false);
+            setEditingProduct(null);
+          }
+        }}
       />
 
       <BackgroundModal

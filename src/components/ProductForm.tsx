@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { ImagePlus, Crop, Loader2 } from 'lucide-react';
+import { ImagePlus, Crop, Loader2, ArrowRight } from 'lucide-react';
 import { ImageCropper } from './ImageCropper';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -21,6 +21,10 @@ interface ProductFormProps {
   onSubmit: (product: Omit<Product, 'id'>) => void;
   editingProduct?: Product | null;
   onUpdate?: (id: string, updates: Partial<Omit<Product, 'id'>>) => void;
+  onSaveAndNext?: (id: string, updates: Partial<Omit<Product, 'id'>>) => void;
+  hasNextProduct?: boolean;
+  currentIndex?: number;
+  totalCount?: number;
 }
 
 // Função para converter base64 para Blob
@@ -49,6 +53,10 @@ export function ProductForm({
   onSubmit,
   editingProduct,
   onUpdate,
+  onSaveAndNext,
+  hasNextProduct,
+  currentIndex,
+  totalCount,
 }: ProductFormProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -57,6 +65,7 @@ export function ProductForm({
   const [tempImage, setTempImage] = useState('');
   const [showCropper, setShowCropper] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [goToNext, setGoToNext] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -153,7 +162,7 @@ export function ProductForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     setIsUploading(true);
     try {
       // Garante que a imagem está no storage (caso não tenha sido feito crop)
@@ -169,13 +178,19 @@ export function ProductForm({
         image: finalImage,
       };
 
-      if (editingProduct && onUpdate) {
+      if (editingProduct && goToNext && onSaveAndNext) {
+        onSaveAndNext(editingProduct.id, productData);
+        setGoToNext(false);
+        // mantém modal aberto; parent troca o editingProduct
+      } else if (editingProduct && onUpdate) {
         onUpdate(editingProduct.id, productData);
+        onOpenChange(false);
+        resetForm();
       } else {
         onSubmit(productData);
+        onOpenChange(false);
+        resetForm();
       }
-      onOpenChange(false);
-      resetForm();
     } catch (error) {
       console.error('Erro ao salvar produto:', error);
       toast({
@@ -183,6 +198,7 @@ export function ProductForm({
         description: 'Não foi possível salvar o produto. Tente novamente.',
         variant: 'destructive',
       });
+      setGoToNext(false);
     } finally {
       setIsUploading(false);
     }
@@ -193,7 +209,9 @@ export function ProductForm({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="font-serif text-xl">
-            {editingProduct ? 'Editar Produto' : 'Adicionar Produto'}
+            {editingProduct
+              ? `Editar Produto${typeof currentIndex === 'number' && totalCount ? ` (${currentIndex + 1} de ${totalCount})` : ''}`
+              : 'Adicionar Produto'}
           </DialogTitle>
         </DialogHeader>
         
@@ -246,6 +264,8 @@ export function ProductForm({
                 onChange={(e) => setPrice(e.target.value)}
                 placeholder="0,00"
                 required
+                autoFocus={!!editingProduct}
+                onFocus={(e) => editingProduct && e.currentTarget.select()}
               />
             </div>
 
@@ -298,8 +318,8 @@ export function ProductForm({
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isUploading}>
-                {isUploading ? (
+              <Button type="submit" disabled={isUploading} onClick={() => setGoToNext(false)}>
+                {isUploading && !goToNext ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Salvando...
@@ -308,6 +328,25 @@ export function ProductForm({
                   editingProduct ? 'Salvar Alterações' : 'Adicionar'
                 )}
               </Button>
+              {editingProduct && hasNextProduct && onSaveAndNext && (
+                <Button
+                  type="submit"
+                  disabled={isUploading}
+                  onClick={() => setGoToNext(true)}
+                >
+                  {isUploading && goToNext ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      Salvar e próximo
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
           </form>
         )}
