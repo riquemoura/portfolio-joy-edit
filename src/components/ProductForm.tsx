@@ -264,6 +264,8 @@ export function ProductForm({
                 onChange={(e) => setPrice(e.target.value)}
                 placeholder="0,00"
                 required
+                autoFocus={!!editingProduct}
+                onFocus={(e) => editingProduct && e.currentTarget.select()}
               />
             </div>
 
