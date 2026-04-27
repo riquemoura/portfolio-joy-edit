@@ -211,6 +211,10 @@ export function useProducts(catalogId: string | null) {
     setProducts((prev) => prev.filter((product) => product.id !== id));
   }, []);
 
+  const removeAllPageBreaks = useCallback(() => {
+    setProducts((prev) => prev.filter((product) => !product.isPageBreak));
+  }, []);
+
   const reorderProducts = useCallback((startIndex: number, endIndex: number) => {
     setProducts((prev) => {
       const result = Array.from(prev);
@@ -237,6 +241,7 @@ export function useProducts(catalogId: string | null) {
     addPageBreak,
     updateProduct,
     removeProduct,
+    removeAllPageBreaks,
     reorderProducts,
     moveProductTo,
     saveProducts,
