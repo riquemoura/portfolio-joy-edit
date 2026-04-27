@@ -28,7 +28,7 @@ const Index = () => {
     selectCatalog,
   } = useCatalogs();
 
-  const { products, addProduct, addPageBreak, updateProduct, removeProduct, saveProducts, loadProducts, isSaving, isLoading, reorderProducts, moveProductTo } = useProducts(currentCatalog?.id ?? null);
+  const { products, addProduct, addPageBreak, updateProduct, removeProduct, removeAllPageBreaks, saveProducts, loadProducts, isSaving, isLoading, reorderProducts, moveProductTo } = useProducts(currentCatalog?.id ?? null);
   
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
   const [isProductFormOpen, setIsProductFormOpen] = useState(false);
@@ -234,6 +234,15 @@ const Index = () => {
         isEditingOrder={isEditingOrder}
         onOpenCatalogs={() => setIsCatalogSelectorOpen(true)}
         onExportCards={() => setIsCardModalOpen(true)}
+        pageBreaksCount={products.filter(p => p.isPageBreak).length}
+        onRemoveAllPageBreaks={() => {
+          const count = products.filter(p => p.isPageBreak).length;
+          removeAllPageBreaks();
+          toast({
+            title: 'Quebras removidas',
+            description: `${count} quebra${count !== 1 ? 's' : ''} de página removida${count !== 1 ? 's' : ''}.`,
+          });
+        }}
       />
 
       <main className="container mx-auto px-3 py-4 sm:px-4 sm:py-8">
