@@ -73,7 +73,7 @@ export function useCatalogs() {
 
   const updateCatalog = useCallback(async (id: string, updates: Partial<Pick<Catalog, 'name' | 'backgroundImage'>>) => {
     try {
-      const dbUpdates: Record<string, unknown> = {};
+      const dbUpdates: { name?: string; background_image?: string | null } = {};
       if (updates.name !== undefined) dbUpdates.name = updates.name;
       if (updates.backgroundImage !== undefined) dbUpdates.background_image = updates.backgroundImage;
 
