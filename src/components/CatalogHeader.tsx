@@ -1,7 +1,18 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ImageIcon, FileText, Pencil, Check, Save, Plus, ArrowUpDown, FolderOpen, SeparatorHorizontal, CreditCard } from 'lucide-react';
+import { ImageIcon, FileText, Pencil, Check, Save, Plus, ArrowUpDown, FolderOpen, SeparatorHorizontal, CreditCard, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface CatalogHeaderProps {
   title: string;
@@ -17,6 +28,8 @@ interface CatalogHeaderProps {
   isEditingOrder: boolean;
   onOpenCatalogs: () => void;
   onExportCards: () => void;
+  onRemoveAllPageBreaks: () => void;
+  pageBreaksCount: number;
 }
 
 export function CatalogHeader({
@@ -33,6 +46,8 @@ export function CatalogHeader({
   isEditingOrder,
   onOpenCatalogs,
   onExportCards,
+  onRemoveAllPageBreaks,
+  pageBreaksCount,
 }: CatalogHeaderProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(title);
@@ -94,6 +109,30 @@ export function CatalogHeader({
               <SeparatorHorizontal className="mr-2 h-4 w-4" />
               Quebra de Página
             </Button>
+          )}
+          {isEditingOrder && pageBreaksCount > 0 && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" className="border-destructive/50 text-destructive hover:bg-destructive/10">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Remover Quebras
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Remover todas as quebras de página?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {pageBreaksCount} quebra{pageBreaksCount !== 1 ? 's' : ''} de página ser{pageBreaksCount !== 1 ? 'ão' : 'á'} removida{pageBreaksCount !== 1 ? 's' : ''} deste catálogo. Os produtos serão mantidos.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={onRemoveAllPageBreaks} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Remover
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
           <Button variant="outline" onClick={onEditOrder}>
             <ArrowUpDown className="mr-2 h-4 w-4" />
