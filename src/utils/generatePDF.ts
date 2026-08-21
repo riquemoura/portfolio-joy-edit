@@ -40,7 +40,7 @@ export async function generateCatalogPDF(
   const pageHeight = pdf.internal.pageSize.getHeight();
   const margin = 15;
   const cardWidth = (pageWidth - margin * 3) / 2;
-  const imageSize = 55; // Tamanho da imagem reduzido para caber 4 por página
+  const imageSize = Math.min(70, (pageWidth - margin * 3) / 2 - 4 * 2); // Imagem maior, respeitando a largura do card
   const startY = 40;
   const cardPadding = 4;
   const lineHeight = 3.2; // altura de cada linha de descrição
