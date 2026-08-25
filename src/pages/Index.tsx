@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useProducts } from '@/hooks/useProducts';
 import { useCatalogs } from '@/hooks/useCatalogs';
+import { useAuth } from '@/hooks/useAuth';
 import { Product } from '@/types/product';
 import { CatalogHeader } from '@/components/CatalogHeader';
 import { ProductCard } from '@/components/ProductCard';
@@ -15,6 +17,7 @@ import { generateCatalogPDF, CatalogData } from '@/utils/generatePDF';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { migrateBase64ImagesToStorage } from '@/utils/migrateImages';
+
 
 const Index = () => {
   const {
