@@ -273,7 +273,7 @@ const Index = () => {
         {/* Grid otimizado para mobile - 2 colunas */}
         <div className="grid grid-cols-2 gap-3 sm:gap-4 md:gap-6 lg:grid-cols-3 xl:grid-cols-4">
           {products.map((product, index) => (
-            isEditingOrder ? (
+            isEditingOrder && canEdit ? (
               product.isPageBreak ? (
                 <PageBreakCard
                   key={product.id}
@@ -302,10 +302,12 @@ const Index = () => {
                   product={product}
                   onEdit={handleEditProduct}
                   onRemove={removeProduct}
+                  canEdit={canEdit}
                 />
               )
             )
           ))}
+
         </div>
       </main>
 
