@@ -251,7 +251,11 @@ const Index = () => {
             description: `${count} quebra${count !== 1 ? 's' : ''} de página removida${count !== 1 ? 's' : ''}.`,
           });
         }}
+        canEdit={canEdit}
+        onSignIn={() => navigate('/auth')}
+        onSignOut={signOut}
       />
+
 
       <main className="container mx-auto px-3 py-4 sm:px-4 sm:py-8">
         <div className="mb-4 flex items-center justify-between">
