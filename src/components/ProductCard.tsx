@@ -7,9 +7,11 @@ interface ProductCardProps {
   product: Product;
   onEdit: (product: Product) => void;
   onRemove: (id: string) => void;
+  canEdit?: boolean;
 }
 
-export function ProductCard({ product, onEdit, onRemove }: ProductCardProps) {
+export function ProductCard({ product, onEdit, onRemove, canEdit = true }: ProductCardProps) {
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
