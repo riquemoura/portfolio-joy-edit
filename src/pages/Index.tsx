@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useProducts } from '@/hooks/useProducts';
 import { useCatalogs } from '@/hooks/useCatalogs';
+import { useAuth } from '@/hooks/useAuth';
 import { Product } from '@/types/product';
 import { CatalogHeader } from '@/components/CatalogHeader';
 import { ProductCard } from '@/components/ProductCard';
@@ -15,6 +17,7 @@ import { generateCatalogPDF, CatalogData } from '@/utils/generatePDF';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { migrateBase64ImagesToStorage } from '@/utils/migrateImages';
+
 
 const Index = () => {
   const {
@@ -42,6 +45,10 @@ const Index = () => {
   const [isMigrating, setIsMigrating] = useState(false);
   const hasMigratedRef = useRef(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { session, signOut } = useAuth();
+  const canEdit = !!session;
+
 
   // Carrega catálogos ao inicializar
   useEffect(() => {
@@ -244,7 +251,11 @@ const Index = () => {
             description: `${count} quebra${count !== 1 ? 's' : ''} de página removida${count !== 1 ? 's' : ''}.`,
           });
         }}
+        canEdit={canEdit}
+        onSignIn={() => navigate('/auth')}
+        onSignOut={signOut}
       />
+
 
       <main className="container mx-auto px-3 py-4 sm:px-4 sm:py-8">
         <div className="mb-4 flex items-center justify-between">
@@ -262,7 +273,7 @@ const Index = () => {
         {/* Grid otimizado para mobile - 2 colunas */}
         <div className="grid grid-cols-2 gap-3 sm:gap-4 md:gap-6 lg:grid-cols-3 xl:grid-cols-4">
           {products.map((product, index) => (
-            isEditingOrder ? (
+            isEditingOrder && canEdit ? (
               product.isPageBreak ? (
                 <PageBreakCard
                   key={product.id}
@@ -291,10 +302,12 @@ const Index = () => {
                   product={product}
                   onEdit={handleEditProduct}
                   onRemove={removeProduct}
+                  canEdit={canEdit}
                 />
               )
             )
           ))}
+
         </div>
       </main>
 

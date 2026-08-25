@@ -7,9 +7,11 @@ interface ProductCardProps {
   product: Product;
   onEdit: (product: Product) => void;
   onRemove: (id: string) => void;
+  canEdit?: boolean;
 }
 
-export function ProductCard({ product, onEdit, onRemove }: ProductCardProps) {
+export function ProductCard({ product, onEdit, onRemove, canEdit = true }: ProductCardProps) {
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -34,26 +36,28 @@ export function ProductCard({ product, onEdit, onRemove }: ProductCardProps) {
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
         
-        {/* Botões de ação - menores em mobile */}
-        <div className="absolute right-1 top-1 flex gap-1 opacity-0 transition-opacity duration-300 group-hover:opacity-100 sm:right-2 sm:top-2">
-          <Button
-            size="icon"
-            variant="secondary"
-            className="h-6 w-6 bg-background/90 backdrop-blur-sm sm:h-8 sm:w-8"
-            onClick={() => onEdit(product)}
-          >
-            <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
-          </Button>
-          <Button
-            size="icon"
-            variant="destructive"
-            className="h-6 w-6 bg-destructive/90 backdrop-blur-sm sm:h-8 sm:w-8"
-            onClick={() => onRemove(product.id)}
-          >
-            <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
-          </Button>
-        </div>
+        {canEdit && (
+          <div className="absolute right-1 top-1 flex gap-1 opacity-0 transition-opacity duration-300 group-hover:opacity-100 sm:right-2 sm:top-2">
+            <Button
+              size="icon"
+              variant="secondary"
+              className="h-6 w-6 bg-background/90 backdrop-blur-sm sm:h-8 sm:w-8"
+              onClick={() => onEdit(product)}
+            >
+              <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="destructive"
+              className="h-6 w-6 bg-destructive/90 backdrop-blur-sm sm:h-8 sm:w-8"
+              onClick={() => onRemove(product.id)}
+            >
+              <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+            </Button>
+          </div>
+        )}
       </div>
+
       
       {/* Conteúdo compacto para mobile */}
       <CardContent className="p-2 sm:p-4">
