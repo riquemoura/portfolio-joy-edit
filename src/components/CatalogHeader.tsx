@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ImageIcon, FileText, Pencil, Check, Save, Plus, ArrowUpDown, FolderOpen, SeparatorHorizontal, CreditCard, Trash2 } from 'lucide-react';
+import { ImageIcon, FileText, Pencil, Check, Save, Plus, ArrowUpDown, FolderOpen, SeparatorHorizontal, CreditCard, Trash2, LogIn, LogOut } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
