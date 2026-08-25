@@ -1,6 +1,6 @@
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
-import { supabaseAnon } from "../supabase";
+import { supabaseAsCaller } from "../supabase";
 
 export default defineTool({
   name: "update_product",
@@ -14,7 +14,7 @@ export default defineTool({
     image_url: z.string().optional(),
   },
   annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
-  handler: async ({ id, name, price, description, image_url }) => {
+  handler: async ({ id, name, price, description, image_url }, ctx) => {
     const updates: Record<string, unknown> = {};
     if (name !== undefined) updates.name = name;
     if (price !== undefined) updates.price = price;
@@ -23,7 +23,7 @@ export default defineTool({
     if (Object.keys(updates).length === 0) {
       return { content: [{ type: "text", text: "No fields to update." }], isError: true };
     }
-    const supabase = supabaseAnon();
+    const supabase = supabaseAsCaller(ctx);
     const { data, error } = await supabase
       .from("products")
       .update(updates as never)

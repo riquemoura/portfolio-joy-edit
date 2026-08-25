@@ -1,6 +1,6 @@
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
-import { supabaseAnon } from "../supabase";
+import { supabaseAsCaller } from "../supabase";
 
 export default defineTool({
   name: "create_product",
@@ -14,8 +14,8 @@ export default defineTool({
     image_url: z.string().optional().describe("Optional public image URL."),
   },
   annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-  handler: async ({ catalog_id, name, price, description, image_url }) => {
-    const supabase = supabaseAnon();
+  handler: async ({ catalog_id, name, price, description, image_url }, ctx) => {
+    const supabase = supabaseAsCaller(ctx);
     const { data: last } = await supabase
       .from("products")
       .select("position")

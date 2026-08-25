@@ -50,6 +50,14 @@ function supabaseAnon() {
     auth: { persistSession: false, autoRefreshToken: false }
   });
 }
+function supabaseAsCaller(ctx) {
+  const token = ctx?.getToken?.();
+  if (!token) throw new Error("Authentication required: sign in to modify catalog data.");
+  return createClient(supabaseProjectUrl(), supabasePublishableKey(), {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${token}` } }
+  });
+}
 
 // src/lib/mcp/tools/list-catalogs.ts
 import { defineTool } from "npm:@lovable.dev/mcp-js@0.26.2";
@@ -116,8 +124,8 @@ var create_product_default = defineTool3({
     image_url: z2.string().optional().describe("Optional public image URL.")
   },
   annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-  handler: async ({ catalog_id, name, price, description, image_url }) => {
-    const supabase = supabaseAnon();
+  handler: async ({ catalog_id, name, price, description, image_url }, ctx) => {
+    const supabase = supabaseAsCaller(ctx);
     const { data: last } = await supabase.from("products").select("position").eq("catalog_id", catalog_id).order("position", { ascending: false }).limit(1);
     const position = (last?.[0]?.position ?? -1) + 1;
     const { data, error } = await supabase.from("products").insert({ catalog_id, name, price, description: description ?? null, image_url: image_url ?? null, position }).select().single();
@@ -144,7 +152,7 @@ var update_product_default = defineTool4({
     image_url: z3.string().optional()
   },
   annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
-  handler: async ({ id, name, price, description, image_url }) => {
+  handler: async ({ id, name, price, description, image_url }, ctx) => {
     const updates = {};
     if (name !== void 0) updates.name = name;
     if (price !== void 0) updates.price = price;
@@ -153,7 +161,7 @@ var update_product_default = defineTool4({
     if (Object.keys(updates).length === 0) {
       return { content: [{ type: "text", text: "No fields to update." }], isError: true };
     }
-    const supabase = supabaseAnon();
+    const supabase = supabaseAsCaller(ctx);
     const { data, error } = await supabase.from("products").update(updates).eq("id", id).select().single();
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
     return {
@@ -172,8 +180,8 @@ var delete_product_default = defineTool5({
   description: "Permanently delete a product from its catalog.",
   inputSchema: { id: z4.string().describe("Product id to delete.") },
   annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
-  handler: async ({ id }) => {
-    const supabase = supabaseAnon();
+  handler: async ({ id }, ctx) => {
+    const supabase = supabaseAsCaller(ctx);
     const { error } = await supabase.from("products").delete().eq("id", id);
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };
     return { content: [{ type: "text", text: `Deleted product ${id}` }] };
