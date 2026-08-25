@@ -30,7 +30,11 @@ interface CatalogHeaderProps {
   onExportCards: () => void;
   onRemoveAllPageBreaks: () => void;
   pageBreaksCount: number;
+  canEdit: boolean;
+  onSignIn: () => void;
+  onSignOut: () => void;
 }
+
 
 export function CatalogHeader({
   title,
@@ -48,7 +52,11 @@ export function CatalogHeader({
   onExportCards,
   onRemoveAllPageBreaks,
   pageBreaksCount,
+  canEdit,
+  onSignIn,
+  onSignOut,
 }: CatalogHeaderProps) {
+
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(title);
 
