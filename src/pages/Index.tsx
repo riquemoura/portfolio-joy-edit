@@ -45,6 +45,10 @@ const Index = () => {
   const [isMigrating, setIsMigrating] = useState(false);
   const hasMigratedRef = useRef(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { session, signOut } = useAuth();
+  const canEdit = !!session;
+
 
   // Carrega catálogos ao inicializar
   useEffect(() => {
