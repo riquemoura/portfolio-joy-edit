@@ -3,10 +3,7 @@
 // supabase function: mcp
 // Bundled from src/lib/mcp/index.ts by @lovable.dev/mcp-js.
 // src/lib/mcp/index.ts
-import { defineMcp } from "npm:@lovable.dev/mcp-js@0.26.2";
-
-// src/lib/mcp/tools/list-catalogs.ts
-import { defineTool } from "npm:@lovable.dev/mcp-js@0.26.2";
+import { defineMcp, auth } from "npm:@lovable.dev/mcp-js@0.26.2";
 
 // src/lib/mcp/supabase.ts
 import { createClient } from "npm:@supabase/supabase-js@^2.90.1";
@@ -55,6 +52,7 @@ function supabaseAnon() {
 }
 
 // src/lib/mcp/tools/list-catalogs.ts
+import { defineTool } from "npm:@lovable.dev/mcp-js@0.26.2";
 var list_catalogs_default = defineTool({
   name: "list_catalogs",
   title: "List catalogs",
@@ -187,7 +185,12 @@ var mcp_default = defineMcp({
   name: "my-joyful-portfolio",
   title: "My Joyful Portfolio",
   version: "0.1.0",
-  instructions: "Tools for the product catalog app. Use `list_catalogs` to find a catalog id, `list_products` to read its products in display order, and `create_product` / `update_product` / `delete_product` to manage items. Prices are numbers in BRL.",
+  instructions: "Tools for the product catalog app. Use `list_catalogs` to find a catalog id, `list_products` to read its products in display order, and `create_product` / `update_product` / `delete_product` to manage items. Prices are numbers in BRL. Callers must be signed in.",
+  auth: auth.oauth.issuer({
+    issuer: `${supabaseProjectUrl()}/auth/v1`,
+    acceptedAudiences: "authenticated",
+    resourceName: "My Joyful Portfolio"
+  }),
   tools: [list_catalogs_default, list_products_default, create_product_default, update_product_default, delete_product_default]
 });
 
