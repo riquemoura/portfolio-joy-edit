@@ -18,7 +18,7 @@ function configuredEnv(names: readonly string[]): string | undefined {
   return undefined;
 }
 
-function supabaseProjectUrl(): string {
+export function supabaseProjectUrl(): string {
   const url = configuredEnv(["SUPABASE_URL", "VITE_SUPABASE_URL"]);
   if (!url) throw new Error("SUPABASE_URL (or VITE_SUPABASE_URL) is required");
   return url;
@@ -50,9 +50,24 @@ function supabasePublishableKey(): string {
   throw new Error("SUPABASE_PUBLISHABLE_KEY, SUPABASE_PUBLISHABLE_KEYS, or SUPABASE_ANON_KEY is required");
 }
 
-// No caller identity — RLS runs as `anon`, matching this app's public no-login design.
+// Read-only client: RLS runs as `anon`, which can only SELECT catalogs/products.
 export function supabaseAnon() {
   return createClient(supabaseProjectUrl(), supabasePublishableKey(), {
     auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
+type AuthLike = { getToken?: () => string | undefined };
+
+/**
+ * Write client bound to the caller's verified OAuth token, so RLS runs as that
+ * signed-in user. Throws when the request carries no token.
+ */
+export function supabaseAsCaller(ctx: AuthLike | undefined) {
+  const token = ctx?.getToken?.();
+  if (!token) throw new Error("Authentication required: sign in to modify catalog data.");
+  return createClient(supabaseProjectUrl(), supabasePublishableKey(), {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${token}` } },
   });
 }
