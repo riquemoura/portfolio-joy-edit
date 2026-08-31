@@ -235,24 +235,36 @@ export function ProductForm({
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Nome do Produto</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="name">Nome do Produto</Label>
+                <span className="text-xs text-muted-foreground">
+                  {name.length}/{MAX_PRODUCT_NAME_LENGTH}
+                </span>
+              </div>
               <Input
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Ex: Produto Premium"
+                maxLength={MAX_PRODUCT_NAME_LENGTH}
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Descrição</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="description">Descrição</Label>
+                <span className="text-xs text-muted-foreground">
+                  {description.length}/{MAX_PRODUCT_DESCRIPTION_LENGTH}
+                </span>
+              </div>
               <Textarea
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Descreva o produto em até 3 linhas..."
+                placeholder={`Descreva o produto (máx. ${MAX_PRODUCT_DESCRIPTION_LENGTH} caracteres)...`}
                 rows={3}
+                maxLength={MAX_PRODUCT_DESCRIPTION_LENGTH}
                 className="resize-none"
               />
             </div>

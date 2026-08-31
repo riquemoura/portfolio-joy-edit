@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import { Product } from '@/types/product';
+import { MAX_PRODUCT_DESCRIPTION_LENGTH } from '@/constants/product';
 
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat('pt-BR', {
