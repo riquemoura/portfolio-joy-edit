@@ -163,30 +163,71 @@ export async function generateCatalogPDF(
         pdf.rect(imgX, imgY, imageSize, imageSize, 'F');
       }
 
-      // Text area below image
+      // Text area below image — tudo deve caber dentro do card (grade fixa)
       const textY = imgY + imageSize + 5;
       const textX = x + cardPadding;
       const textWidth = cardWidth - cardPadding * 2;
+      const cardBottomY = y + rowHeight;
 
-      // Product name
+      // Price ancorado na base do card (posição fixa, mesma em todos os cards)
+      const priceFontSize = 13;
+      const priceY = cardBottomY - cardPadding - 1;
+
+      // Product name (1 linha)
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(11);
       pdf.setTextColor(40, 40, 40);
       const nameLines = pdf.splitTextToSize(product.name, textWidth);
       pdf.text(nameLines.slice(0, 1), textX, textY + 4);
 
-      // Description - ALL lines (auto-adjustable)
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(8);
-      pdf.setTextColor(100, 100, 100);
-      const descLines = pdf.splitTextToSize(product.description, textWidth);
-      pdf.text(descLines, textX, textY + 10);
+      // Description com auto-regulação: reduz fonte e nº de linhas até caber
+      // no espaço entre o nome e o preço, sem nunca sair da caixa
+      const descStartY = textY + 9;
+      const descMaxBottom = priceY - 7; // folga antes do preço
+      let descFontSize = 8;
+      let descLines: string[] = [];
+      let descLineH = lineHeight;
 
-      // Price below description
+      while (descFontSize >= 6) {
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(descFontSize);
+        descLineH = lineHeight * (descFontSize / 8);
+        const lines: string[] = pdf.splitTextToSize(product.description || '', textWidth);
+        const maxLines = Math.max(1, Math.floor((descMaxBottom - descStartY) / descLineH));
+        if (lines.length <= maxLines) {
+          descLines = lines;
+          break;
+        }
+        descFontSize -= 0.5;
+      }
+
+      // Se ainda assim não couber, trunca com reticências na última linha visível
+      if (descLines.length === 0) {
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(descFontSize);
+        descLineH = lineHeight * (descFontSize / 8);
+        const maxLines = Math.max(1, Math.floor((descMaxBottom - descStartY) / descLineH));
+        const allLines: string[] = pdf.splitTextToSize(product.description || '', textWidth);
+        descLines = allLines.slice(0, maxLines);
+        if (allLines.length > maxLines && descLines.length > 0) {
+          let last = descLines[descLines.length - 1];
+          while (last.length > 0 && pdf.getTextWidth(last + '…') > textWidth) {
+            last = last.slice(0, -1);
+          }
+          descLines[descLines.length - 1] = last + '…';
+        }
+      }
+
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(descFontSize);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text(descLines, textX, descStartY + 1);
+
+      // Price — sempre dentro da caixa, na base
       pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(13);
+      pdf.setFontSize(priceFontSize);
       pdf.setTextColor(120, 90, 60);
-      pdf.text(formatPrice(product.price), textX, textY + 10 + (descLines.length * lineHeight) + 5);
+      pdf.text(formatPrice(product.price), textX, priceY);
     }
 
     addFooter(pdf, pageIndex + 1, pages.length);
