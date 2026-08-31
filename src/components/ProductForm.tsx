@@ -14,6 +14,10 @@ import { ImagePlus, Crop, Loader2, ArrowRight } from 'lucide-react';
 import { ImageCropper } from './ImageCropper';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import {
+  MAX_PRODUCT_NAME_LENGTH,
+  MAX_PRODUCT_DESCRIPTION_LENGTH,
+} from '@/constants/product';
 
 interface ProductFormProps {
   open: boolean;

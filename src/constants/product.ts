@@ -1,0 +1,2 @@
+export const MAX_PRODUCT_NAME_LENGTH = 40;
+export const MAX_PRODUCT_DESCRIPTION_LENGTH = 100;
