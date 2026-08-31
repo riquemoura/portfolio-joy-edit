@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import { Product } from '@/types/product';
+import { MAX_PRODUCT_DESCRIPTION_LENGTH } from '@/constants/product';
 
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat('pt-BR', {
@@ -180,42 +181,26 @@ export async function generateCatalogPDF(
       const nameLines = pdf.splitTextToSize(product.name, textWidth);
       pdf.text(nameLines.slice(0, 1), textX, textY + 4);
 
-      // Description com auto-regulação: reduz fonte e nº de linhas até caber
-      // no espaço entre o nome e o preço, sem nunca sair da caixa
+      // Description com limite fixo de caracteres: o formulário já restringe,
+      // mas aqui garantimos que o texto nunca ultrapasse o espaço do card.
       const descStartY = textY + 9;
       const descMaxBottom = priceY - 7; // folga antes do preço
-      let descFontSize = 8;
-      let descLines: string[] = [];
-      let descLineH = lineHeight;
+      const descFontSize = 8;
+      const descLineH = lineHeight;
+      const maxLines = Math.max(1, Math.floor((descMaxBottom - descStartY) / descLineH));
 
-      while (descFontSize >= 6) {
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(descFontSize);
-        descLineH = lineHeight * (descFontSize / 8);
-        const lines: string[] = pdf.splitTextToSize(product.description || '', textWidth);
-        const maxLines = Math.max(1, Math.floor((descMaxBottom - descStartY) / descLineH));
-        if (lines.length <= maxLines) {
-          descLines = lines;
-          break;
-        }
-        descFontSize -= 0.5;
-      }
+      // Aplica o limite máximo de caracteres como salvaguarda
+      const limitedDescription = (product.description || '').slice(0, MAX_PRODUCT_DESCRIPTION_LENGTH);
+      const allDescLines: string[] = pdf.splitTextToSize(limitedDescription, textWidth);
+      const descLines = allDescLines.slice(0, maxLines);
 
-      // Se ainda assim não couber, trunca com reticências na última linha visível
-      if (descLines.length === 0) {
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(descFontSize);
-        descLineH = lineHeight * (descFontSize / 8);
-        const maxLines = Math.max(1, Math.floor((descMaxBottom - descStartY) / descLineH));
-        const allLines: string[] = pdf.splitTextToSize(product.description || '', textWidth);
-        descLines = allLines.slice(0, maxLines);
-        if (allLines.length > maxLines && descLines.length > 0) {
-          let last = descLines[descLines.length - 1];
-          while (last.length > 0 && pdf.getTextWidth(last + '…') > textWidth) {
-            last = last.slice(0, -1);
-          }
-          descLines[descLines.length - 1] = last + '…';
+      // Se houver truncamento, adiciona reticências na última linha visível
+      if (allDescLines.length > maxLines && descLines.length > 0) {
+        let last = descLines[descLines.length - 1];
+        while (last.length > 0 && pdf.getTextWidth(last + '…') > textWidth) {
+          last = last.slice(0, -1);
         }
+        descLines[descLines.length - 1] = last + '…';
       }
 
       pdf.setFont('helvetica', 'normal');
