@@ -181,32 +181,48 @@ export async function generateCatalogPDF(
       const nameLines = pdf.splitTextToSize(product.name, textWidth);
       pdf.text(nameLines.slice(0, 1), textX, textY + 4);
 
-      // Description com limite fixo de caracteres: o formulário já restringe,
-      // mas aqui garantimos que o texto nunca ultrapasse o espaço do card.
+      // Description com auto-regulação de fonte: reduz o tamanho da fonte
+      // (8pt → 6pt) até que o texto completo caiba no espaço do card.
+      // Só trunca com reticências como último recurso (fonte mínima).
       const descStartY = textY + 9;
       const descMaxBottom = priceY - 7; // folga antes do preço
-      const descFontSize = 8;
-      const descLineH = lineHeight;
-      const maxLines = Math.max(1, Math.floor((descMaxBottom - descStartY) / descLineH));
+      const descBaseFontSize = 8;
+      const descMinFontSize = 6;
 
       // Aplica o limite máximo de caracteres como salvaguarda
       const limitedDescription = (product.description || '').slice(0, MAX_PRODUCT_DESCRIPTION_LENGTH);
-      const allDescLines: string[] = pdf.splitTextToSize(limitedDescription, textWidth);
-      const descLines = allDescLines.slice(0, maxLines);
 
-      // Se houver truncamento, adiciona reticências na última linha visível
-      if (allDescLines.length > maxLines && descLines.length > 0) {
-        let last = descLines[descLines.length - 1];
-        while (last.length > 0 && pdf.getTextWidth(last + '…') > textWidth) {
-          last = last.slice(0, -1);
+      let descFontSize = descBaseFontSize;
+      let descLineH = lineHeight;
+      let allDescLines: string[] = [];
+      let descLines: string[] = [];
+
+      // Tenta encaixar o texto completo reduzindo a fonte gradualmente
+      for (let size = descBaseFontSize; size >= descMinFontSize; size -= 0.5) {
+        descFontSize = size;
+        descLineH = lineHeight * (size / descBaseFontSize);
+        const maxLines = Math.max(1, Math.floor((descMaxBottom - descStartY) / descLineH));
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(size);
+        allDescLines = pdf.splitTextToSize(limitedDescription, textWidth);
+        if (allDescLines.length <= maxLines || size === descMinFontSize) {
+          descLines = allDescLines.slice(0, maxLines);
+          // Último recurso: trunca com reticências apenas na fonte mínima
+          if (allDescLines.length > maxLines && descLines.length > 0) {
+            let last = descLines[descLines.length - 1];
+            while (last.length > 0 && pdf.getTextWidth(last + '…') > textWidth) {
+              last = last.slice(0, -1);
+            }
+            descLines[descLines.length - 1] = last + '…';
+          }
+          break;
         }
-        descLines[descLines.length - 1] = last + '…';
       }
 
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(descFontSize);
       pdf.setTextColor(100, 100, 100);
-      pdf.text(descLines, textX, descStartY + 1);
+      pdf.text(descLines, textX, descStartY + 1, { lineHeightFactor: descLineH / (descFontSize * 0.3528) });
 
       // Price — sempre dentro da caixa, na base
       pdf.setFont('helvetica', 'bold');
