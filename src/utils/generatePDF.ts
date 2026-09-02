@@ -224,11 +224,13 @@ export async function generateCatalogPDF(
       pdf.setTextColor(100, 100, 100);
       pdf.text(descLines, textX, descStartY + 1, { lineHeightFactor: descLineH / (descFontSize * 0.3528) });
 
-      // Price — sempre dentro da caixa, na base
-      pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(priceFontSize);
-      pdf.setTextColor(120, 90, 60);
-      pdf.text(formatPrice(product.price), textX, priceY);
+      // Price — sempre dentro da caixa, na base (omitido quando o produto não tem preço)
+      if (product.price > 0) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(priceFontSize);
+        pdf.setTextColor(120, 90, 60);
+        pdf.text(formatPrice(product.price), textX, priceY);
+      }
     }
 
     addFooter(pdf, pageIndex + 1, pages.length);
