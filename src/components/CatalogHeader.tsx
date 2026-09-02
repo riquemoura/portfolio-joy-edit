@@ -1,7 +1,31 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ImageIcon, FileText, Pencil, Check, Save, Plus, ArrowUpDown, FolderOpen, SeparatorHorizontal, CreditCard, Trash2, LogIn, LogOut } from 'lucide-react';
+import {
+  ImageIcon,
+  FileText,
+  Pencil,
+  Check,
+  Save,
+  Plus,
+  ArrowUpDown,
+  FolderOpen,
+  SeparatorHorizontal,
+  CreditCard,
+  Trash2,
+  LogIn,
+  LogOut,
+  Menu,
+  CopyX,
+} from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,7 +35,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 
 interface CatalogHeaderProps {
@@ -33,6 +56,7 @@ interface CatalogHeaderProps {
   canEdit: boolean;
   onSignIn: () => void;
   onSignOut: () => void;
+  onDuplicateWithoutPrices: () => void;
 }
 
 
@@ -55,10 +79,12 @@ export function CatalogHeader({
   canEdit,
   onSignIn,
   onSignOut,
+  onDuplicateWithoutPrices,
 }: CatalogHeaderProps) {
 
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(title);
+  const [isRemoveBreaksDialogOpen, setIsRemoveBreaksDialogOpen] = useState(false);
 
   const handleSave = () => {
     onTitleChange(editValue);
@@ -109,85 +135,115 @@ export function CatalogHeader({
             </div>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          {canEdit && (
-            <>
-              <Button variant="outline" onClick={onAddProduct}>
-                <Plus className="mr-2 h-4 w-4" />
-                Adicionar Produto
-              </Button>
-              {isEditingOrder && (
-                <Button variant="outline" onClick={onAddPageBreak} className="border-amber-500/50 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30">
-                  <SeparatorHorizontal className="mr-2 h-4 w-4" />
-                  Quebra de Página
-                </Button>
-              )}
-              {isEditingOrder && pageBreaksCount > 0 && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="outline" className="border-destructive/50 text-destructive hover:bg-destructive/10">
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Remover Quebras
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Remover todas as quebras de página?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        {pageBreaksCount} quebra{pageBreaksCount !== 1 ? 's' : ''} de página ser{pageBreaksCount !== 1 ? 'ão' : 'á'} removida{pageBreaksCount !== 1 ? 's' : ''} deste catálogo. Os produtos serão mantidos.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction onClick={onRemoveAllPageBreaks} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                        Remover
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              )}
-              <Button variant="outline" onClick={onEditOrder}>
-                <ArrowUpDown className="mr-2 h-4 w-4" />
-                {isEditingOrder ? 'Concluir Ordem' : 'Editar Ordem'}
-              </Button>
-              <Button variant="outline" onClick={onCustomizeBackground}>
-                <ImageIcon className="mr-2 h-4 w-4" />
-                Customizar Fundo
-              </Button>
-            </>
-          )}
-          <Button variant="outline" onClick={onOpenCatalogs}>
-            <FolderOpen className="mr-2 h-4 w-4" />
-            Meus Catálogos
-          </Button>
-          <Button variant="outline" onClick={onExportCards}>
-            <CreditCard className="mr-2 h-4 w-4" />
-            Card
-          </Button>
-          {canEdit && (
-            <Button variant="outline" onClick={onSaveProject} disabled={isSaving}>
-              <Save className="mr-2 h-4 w-4" />
-              {isSaving ? 'Salvando...' : 'Salvar Projeto'}
-            </Button>
-          )}
-          <Button onClick={onGeneratePDF} disabled={isGeneratingPDF}>
-            <FileText className="mr-2 h-4 w-4" />
-            {isGeneratingPDF ? 'Gerando...' : 'Gerar PDF'}
-          </Button>
-          {canEdit ? (
-            <Button variant="ghost" onClick={onSignOut}>
-              <LogOut className="mr-2 h-4 w-4" />
-              Sair
-            </Button>
-          ) : (
-            <Button variant="ghost" onClick={onSignIn}>
-              <LogIn className="mr-2 h-4 w-4" />
-              Entrar
-            </Button>
-          )}
-        </div>
 
+        <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Menu className="mr-2 h-4 w-4" />
+                Menu
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel>Funções do projeto</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+
+              {canEdit && (
+                <>
+                  <DropdownMenuItem onClick={onAddProduct}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Adicionar Produto
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={onEditOrder}>
+                    <ArrowUpDown className="mr-2 h-4 w-4" />
+                    {isEditingOrder ? 'Concluir Ordem' : 'Editar Ordem'}
+                  </DropdownMenuItem>
+                  {isEditingOrder && (
+                    <DropdownMenuItem onClick={onAddPageBreak}>
+                      <SeparatorHorizontal className="mr-2 h-4 w-4 text-amber-600" />
+                      Adicionar Quebra de Página
+                    </DropdownMenuItem>
+                  )}
+                  {isEditingOrder && pageBreaksCount > 0 && (
+                    <DropdownMenuItem
+                      onClick={() => setIsRemoveBreaksDialogOpen(true)}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Remover Todas as Quebras
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={onCustomizeBackground}>
+                    <ImageIcon className="mr-2 h-4 w-4" />
+                    Customizar Fundo
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={onDuplicateWithoutPrices}>
+                    <CopyX className="mr-2 h-4 w-4" />
+                    Copiar Catálogo sem Preços
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
+
+              <DropdownMenuItem onClick={onOpenCatalogs}>
+                <FolderOpen className="mr-2 h-4 w-4" />
+                Meus Catálogos
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onExportCards}>
+                <CreditCard className="mr-2 h-4 w-4" />
+                Exportar Cards
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onGeneratePDF} disabled={isGeneratingPDF}>
+                <FileText className="mr-2 h-4 w-4" />
+                {isGeneratingPDF ? 'Gerando PDF...' : 'Gerar PDF'}
+              </DropdownMenuItem>
+
+              {canEdit && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={onSaveProject} disabled={isSaving}>
+                    <Save className="mr-2 h-4 w-4" />
+                    {isSaving ? 'Salvando...' : 'Salvar Projeto'}
+                  </DropdownMenuItem>
+                </>
+              )}
+
+              <DropdownMenuSeparator />
+              {canEdit ? (
+                <DropdownMenuItem onClick={onSignOut}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sair
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onClick={onSignIn}>
+                  <LogIn className="mr-2 h-4 w-4" />
+                  Entrar
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
+
+      <AlertDialog open={isRemoveBreaksDialogOpen} onOpenChange={setIsRemoveBreaksDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover todas as quebras de página?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pageBreaksCount} quebra{pageBreaksCount !== 1 ? 's' : ''} de página ser{pageBreaksCount !== 1 ? 'ão' : 'á'} removida{pageBreaksCount !== 1 ? 's' : ''} deste catálogo. Os produtos serão mantidos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={onRemoveAllPageBreaks}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </header>
   );
 }
