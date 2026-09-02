@@ -67,9 +67,11 @@ export function ProductCard({ product, onEdit, onRemove, canEdit = true }: Produ
         <p className="mb-1.5 line-clamp-2 text-xs leading-snug text-muted-foreground sm:mb-3 sm:line-clamp-3 sm:text-sm sm:leading-relaxed">
           {product.description}
         </p>
-        <p className="font-serif text-base font-bold text-primary sm:text-xl">
-          {formatPrice(product.price)}
-        </p>
+        {product.price > 0 && (
+          <p className="font-serif text-base font-bold text-primary sm:text-xl">
+            {formatPrice(product.price)}
+          </p>
+        )}
       </CardContent>
     </Card>
   );

@@ -123,6 +123,71 @@ export function useCatalogs() {
     }
   }, [currentCatalog, catalogs]);
 
+  const duplicateCatalogWithoutPrices = useCallback(async (id: string): Promise<Catalog | null> => {
+    try {
+      const originalCatalog = catalogs.find((c) => c.id === id);
+      if (!originalCatalog) {
+        console.error('Catálogo não encontrado');
+        return null;
+      }
+
+      const { data: newCatalogData, error: catalogError } = await supabase
+        .from('catalogs')
+        .insert({
+          name: `${originalCatalog.name} (sem preços)`,
+          background_image: originalCatalog.backgroundImage,
+        })
+        .select()
+        .single();
+
+      if (catalogError) throw catalogError;
+
+      const newCatalog: Catalog = {
+        id: newCatalogData.id,
+        name: newCatalogData.name,
+        backgroundImage: newCatalogData.background_image,
+        createdAt: newCatalogData.created_at,
+        updatedAt: newCatalogData.updated_at,
+      };
+
+      const { data: originalProducts, error: productsError } = await supabase
+        .from('products')
+        .select('*')
+        .eq('catalog_id', id)
+        .order('position', { ascending: true });
+
+      if (productsError) throw productsError;
+
+      if (originalProducts && originalProducts.length > 0) {
+        const productsToInsert = originalProducts.map((p, index) => ({
+          catalog_id: newCatalog.id,
+          name: p.name,
+          description: p.description,
+          price: 0, // Cópia sem preços
+          image_url: p.image_url,
+          position: index,
+          is_page_break: (p as any).is_page_break ?? false,
+        }));
+
+        const { error: insertError } = await supabase
+          .from('products')
+          .insert(productsToInsert);
+
+        if (insertError) {
+          await supabase.from('catalogs').delete().eq('id', newCatalog.id);
+          throw insertError;
+        }
+      }
+
+      setCatalogs((prev) => [...prev, newCatalog]);
+
+      return newCatalog;
+    } catch (error) {
+      console.error('Erro ao copiar catálogo sem preços:', error);
+      return null;
+    }
+  }, [catalogs]);
+
   const duplicateCatalog = useCallback(async (id: string): Promise<Catalog | null> => {
     try {
       // 1. Busca o catálogo original
@@ -206,6 +271,7 @@ export function useCatalogs() {
     updateCatalog,
     deleteCatalog,
     duplicateCatalog,
+    duplicateCatalogWithoutPrices,
     selectCatalog,
   };
 }
