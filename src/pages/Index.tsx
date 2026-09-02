@@ -28,6 +28,7 @@ const Index = () => {
     updateCatalog,
     deleteCatalog,
     duplicateCatalog,
+    duplicateCatalogWithoutPrices,
     selectCatalog,
   } = useCatalogs();
 
@@ -197,6 +198,23 @@ const Index = () => {
     return updateCatalog(id, { name });
   };
 
+  const handleDuplicateWithoutPrices = async () => {
+    if (!currentCatalog) return;
+    const newCatalog = await duplicateCatalogWithoutPrices(currentCatalog.id);
+    if (newCatalog) {
+      toast({
+        title: 'Catálogo copiado sem preços!',
+        description: `O catálogo "${newCatalog.name}" foi criado com todos os produtos (preços removidos).`,
+      });
+    } else {
+      toast({
+        title: 'Erro ao copiar',
+        description: 'Não foi possível copiar o catálogo. Tente novamente.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleDuplicateCatalog = async (id: string) => {
     const newCatalog = await duplicateCatalog(id);
     if (newCatalog) {
@@ -252,6 +270,7 @@ const Index = () => {
           });
         }}
         canEdit={canEdit}
+        onDuplicateWithoutPrices={handleDuplicateWithoutPrices}
         onSignIn={() => navigate('/auth')}
         onSignOut={signOut}
       />
